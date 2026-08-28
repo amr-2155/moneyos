@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MoneyOS</string>
+    <string name="title_activity_main">MoneyOS</string>
+    <string name="package_name">com.moneyos.app</string>
+    <string name="custom_url_scheme">com.moneyos.app</string>
+</resources>
