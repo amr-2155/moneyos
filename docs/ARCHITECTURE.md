@@ -69,13 +69,15 @@ moneyos/
 │       ├── transfers/        # transfers as linked legs + reversal
 │       ├── dashboard/        # GET /dashboard (overview)
 │       ├── budgets/          # budget CRUD + live spending/status
-│       └── savings/          # savings goals CRUD + contributions + estimates
+│       ├── savings/          # savings goals CRUD + contributions + estimates
+│       └── analytics/        # GET /analytics/* (trends, category breakdown, net worth, budget & goal progress)
 └── test/
     ├── money.test.ts
     ├── auth.integration.test.ts
     ├── financial.helpers.ts
     ├── dashboard.integration.test.ts
     ├── budgets.integration.test.ts
+    ├── analytics.integration.test.ts
     └── savings.integration.test.ts
 ```
 
@@ -192,7 +194,8 @@ All routes below require `Authorization: Bearer <access_token>` unless noted.
 | GET/POST | `/transfers`; POST `/transfers/:id/reverse` | |
 | GET | `/dashboard?month=YYYY-MM&currency=` | overview; month summary/trend in one currency |
 | GET/POST | `/budgets`; GET/PATCH `/budgets/:id`; POST `/budgets/:id/archive` | `?period=&includeArchived=` |
-| GET/POST | `/savings-goals`; GET/PATCH `/savings-goals/:id`; POST `/savings-goals/:id/archive`; GET/POST `/savings-goals/:id/contributions` | |
+|| GET/POST | `/savings-goals`; GET/PATCH `/savings-goals/:id`; POST `/savings-goals/:id/archive`; GET/POST `/savings-goals/:id/contributions` | |
+|| GET | `/analytics/overview`; GET `/analytics/monthly-summary`; GET `/analytics/category-breakdown`; GET `/analytics/income-expense-trend`; GET `/analytics/period-comparison`; GET `/analytics/net-worth-trend`; GET `/analytics/budget-performance`; GET `/analytics/savings-goal-progress` | `?from=YYYY-MM&to=YYYY-MM&currency=&month=&months=&limit=`
 
 Monetary fields are decimal strings over the API and integer minor units in storage.
 

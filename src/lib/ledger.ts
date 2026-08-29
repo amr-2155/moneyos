@@ -15,6 +15,9 @@ import { divideRound } from "./money.js";
  * (source negative, destination positive). Reversals are normal ledger rows
  * with flipped signs, so balances and category/type totals automatically
  * stay correct without any persisted balance bookkeeping.
+ *
+ * These helpers are consumed by the dashboard, budgets, savings, and analytics
+ * modules — all are pure reads and accept an injected `Db`.
  */
 
 export interface AccountBalance {
@@ -255,4 +258,99 @@ export function balanceTotalsByCurrency(db: Db, userId: string): { currency: str
   return [...byCurrency.entries()]
     .map(([currency, totalMinor]) => ({ currency, totalMinor }))
     .sort((a, b) => a.currency.localeCompare(b.currency));
+}
+
+/**
+ * Net worth trend: the total balance (per currency) at the end of each month
+ * in the given month range. Computed as the sum of all account opening
+ * balances plus the cumulative net flow of transactions up to and including
+ * each month. Only `income`, `expense`, and `transfer` type transactions are
+ * included (they net to zero across transfer legs).
+ */
+export interface NetWorthTrendPoint {
+  month: string;
+  currency: string;
+  totalMinor: number;
+}
+
+export function netWorthTrend(
+  db: Db,
+  userId: string,
+  range: { fromMonth: string; toMonth: string },
+  currency?: string,
+): NetWorthTrendPoint[] {
+  // 1. Opening balances per currency (static starting point).
+  const openingRows = db
+    .select({
+      currency: accounts.currency,
+      totalMinor: sql<number>`SUM(${accounts.openingBalanceMinor})`,
+    })
+    .from(accounts)
+    .where(eq(accounts.userId, userId))
+    .groupBy(accounts.currency)
+    .all();
+
+  const openingByCurrency = new Map<string, number>();
+  for (const row of openingRows) {
+    openingByCurrency.set(row.currency, row.totalMinor);
+  }
+
+  // 2. Monthly net flow per currency (sum of signed amountMinor).
+  const flowRows = db
+    .select({
+      month: sql<string>`substr(${transactions.date}, 1, 7)`,
+      currency: transactions.currency,
+      netMinor: sql<number>`COALESCE(SUM(${transactions.amountMinor}), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        sql`substr(${transactions.date}, 1, 7) >= ${range.fromMonth}`,
+        sql`substr(${transactions.date}, 1, 7) <= ${range.toMonth}`,
+      ),
+    )
+    .groupBy(sql`substr(${transactions.date}, 1, 7)`, transactions.currency)
+    .all();
+
+  // 3. Build the list of all months in range (filling gaps with zero flow).
+  const months: string[] = [];
+  const [cy, cm] = range.fromMonth.split("-").map(Number);
+  const [ey, em] = range.toMonth.split("-").map(Number);
+  let year = cy!;
+  let m = cm!;
+  const endYear = ey!;
+  const endMonth = em!;
+  while (year < endYear || (year === endYear && m <= endMonth)) {
+    months.push(`${year}-${String(m).padStart(2, "0")}`);
+    m++;
+    if (m > 12) {
+      m = 1;
+      year++;
+    }
+  }
+
+  // 4. Compute cumulative net worth per currency at end of each month.
+  const currencies = new Set<string>();
+  for (const row of flowRows) {
+    currencies.add(row.currency);
+  }
+  for (const c of openingByCurrency.keys()) {
+    currencies.add(c);
+  }
+
+  const resultCurrency = currency ? [currency] : [...currencies].sort();
+  const result: NetWorthTrendPoint[] = [];
+
+  for (const cur of resultCurrency) {
+    const opening = openingByCurrency.get(cur) ?? 0;
+    let cumulative = opening;
+    for (const month of months) {
+      const flow = flowRows.find((r) => r.month === month && r.currency === cur)?.netMinor ?? 0;
+      cumulative += flow;
+      result.push({ month, currency: cur, totalMinor: cumulative });
+    }
+  }
+
+  return result;
 }

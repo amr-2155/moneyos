@@ -113,3 +113,39 @@ export async function createTransfer(
   expect(res.statusCode).toBe(201);
   return res.json() as { id: string };
 }
+
+export async function createBudget(
+  app: FastifyInstance,
+  token: string,
+  input: {
+    categoryId: string;
+    amount: string;
+    currency: string;
+    period: string;
+    warningThresholdPercent?: number;
+  },
+): Promise<{ id: string }> {
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/budgets",
+    headers: auth(token),
+    payload: input,
+  });
+  expect(res.statusCode).toBe(201);
+  return res.json() as { id: string };
+}
+
+export async function createSavingsGoal(
+  app: FastifyInstance,
+  token: string,
+  input: { name: string; targetAmount: string; currency: string; targetDate?: string; currentAmount?: string },
+): Promise<{ id: string }> {
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/savings-goals",
+    headers: auth(token),
+    payload: input,
+  });
+  expect(res.statusCode).toBe(201);
+  return res.json() as { id: string };
+}

@@ -15,6 +15,8 @@ import { AuthService } from "./modules/auth/auth.service.js";
 import { registerAuthRoutes } from "./modules/auth/auth.routes.js";
 import { registerBudgetRoutes } from "./modules/budgets/budgets.routes.js";
 import { BudgetService } from "./modules/budgets/budgets.service.js";
+import { registerAnalyticsRoutes } from "./modules/analytics/analytics.routes.js";
+import { AnalyticsService } from "./modules/analytics/analytics.service.js";
 import { CategoryService } from "./modules/categories/categories.service.js";
 import { registerCategoryRoutes } from "./modules/categories/categories.routes.js";
 import { DashboardService } from "./modules/dashboard/dashboard.service.js";
@@ -72,6 +74,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const budgets = new BudgetService(db, categories);
   const savingsGoals = new SavingsGoalService(db);
   const dashboard = new DashboardService(db, accounts, transactions);
+  const analytics = new AnalyticsService(db);
 
   registerHealthRoutes(app, { db, appName: config.appName });
   await app.register(
@@ -84,6 +87,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       registerBudgetRoutes(api, { service: budgets, authenticate });
       registerSavingsRoutes(api, { service: savingsGoals, authenticate });
       registerDashboardRoutes(api, { service: dashboard, authenticate });
+      registerAnalyticsRoutes(api, { service: analytics, authenticate });
     },
     { prefix: "/api" },
   );
