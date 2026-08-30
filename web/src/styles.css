@@ -3846,3 +3846,395 @@ button.chip:hover {
   }
   .rp-progress-fill { animation: none; }
 }
+
+/* =========================================================================
+   Analytics Dashboard (Phase 8)
+   ========================================================================== */
+
+.analytics-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.analytics-header {
+  margin-bottom: 1.5rem;
+}
+
+.analytics-header .page-header {
+  margin-bottom: 0.75rem;
+}
+
+.analytics-month-picker {
+  margin-top: 0.5rem;
+}
+
+.analytics-month-picker .month-input {
+  max-width: 200px;
+}
+
+.analytics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.analytics-sidebar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 560px) {
+  .analytics-sidebar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analytics-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.analytics-section + .analytics-section {
+  margin-top: 0;
+}
+
+.section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.section-hint {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* KPI Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.stat-sub-text {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Trend Chart (CSS-based bar chart) */
+.trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 180px;
+  padding: 0.5rem 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.trend-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 140px;
+}
+
+.trend-bar {
+  flex: 1;
+  min-width: 4px;
+  border-radius: 3px 3px 0 0;
+  transition: height var(--speed);
+}
+
+.trend-bar-income {
+  background: var(--income);
+}
+
+.trend-bar-expense {
+  background: var(--expense);
+}
+
+.trend-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: var(--font-num);
+}
+
+.trend-legend {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+  margin-inline-start: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.trend-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.trend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.trend-dot-income {
+  background: var(--income);
+}
+
+.trend-dot-expense {
+  background: var(--expense);
+}
+
+/* Period Comparison */
+.compare-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.compare-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-row:last-child {
+  border-bottom: none;
+}
+
+.compare-label {
+  font-size: 0.9rem;
+  color: var(--foreground);
+}
+
+.compare-diff {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.compare-diff-good {
+  color: var(--success);
+}
+
+.compare-diff-bad {
+  color: var(--danger);
+}
+
+.compare-same {
+  color: var(--muted);
+}
+
+/* Category List */
+.category-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.category-emoji {
+  font-size: 1.3rem;
+  width: 24px;
+  text-align: center;
+}
+
+.category-info {
+  flex: 1;
+}
+
+.category-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.category-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.category-amount {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-family: var(--font-num);
+}
+
+/* Net Worth */
+.networth-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.networth-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.networth-item:last-child {
+  border-bottom: none;
+}
+
+.networth-month {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.networth-amount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: var(--font-num);
+}
+
+/* Budget List */
+.budget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.budget-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.budget-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.budget-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.budget-amounts {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.budget-spent {
+  font-weight: 700;
+  font-family: var(--font-num);
+}
+
+.budget-remaining {
+  color: var(--muted);
+  font-family: var(--font-num);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+
+.badge-neutral { background: var(--surface-2); color: var(--muted); }
+.badge-success { background: var(--success-soft); color: var(--success); }
+.badge-warning { background: var(--warning-soft); color: var(--warning); }
+.badge-danger { background: var(--danger-soft); color: var(--danger); }
+.badge-primary { background: var(--primary-soft); color: var(--primary); }
+
+/* Goals List */
+.goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.goal-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.goal-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goal-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.goal-amounts {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.goal-current {
+  font-weight: 700;
+  font-family: var(--font-num);
+}
+
+.goal-target {
+  color: var(--muted);
+  font-family: var(--font-num);
+}
+
+/* Empty state compact */
+.empty-compact .empty-icon {
+  transform: scale(0.7);
+}
+
+.empty-compact .empty-title {
+  font-size: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trend-bar { transition: none; }
+  .progress-fill { transition: none; }
+}

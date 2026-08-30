@@ -1,22 +1,45 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { api, type DashboardView } from "../lib/api";
+import { analyticsApi, HttpError } from "../lib/analyticsApi";
 import { currentMonth, formatCurrency, formatMonth } from "../lib/format";
 import { useAuth } from "../lib/auth";
 import { useI18n } from "../i18n";
-import { AnimatedNumber, Button, EmptyState, Input, PageHeader, SegmentedControl, SkeletonCard } from "../components/ui";
-import { Icon } from "../components/Icon";
 import { useErrorMessage } from "../lib/errors";
-import { loadDistribution, monthlyTargets } from "../lib/distribution";
 import { categoryEmoji, localizeCategoryName } from "../lib/categoryNames";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Input,
+  PageHeader,
+  ProgressBar,
+  SkeletonCard,
+  SkeletonBlock,
+  StatCard,
+  SegmentedControl,
+} from "../components/ui";
+import { Icon } from "../components/Icon";
+import type {
+  AnalyticsOverview,
+  AnalyticsQuery,
+  BudgetPerformanceView,
+  NetWorthPoint,
+  PeriodComparison,
+  SavingsGoalProgressView,
+} from "../lib/analyticsTypes";
 
 type Period = "month" | "three" | "six";
 
-function prevMonth(month: string): string | null {
-  const [y, m] = month.split("-").map(Number);
-  if (!y || !m) return null;
-  if (m === 1) return `${y - 1}-12`;
-  return `${y}-${String(m - 1).padStart(2, "0")}`;
+/** Returns [{from, to}] month strings for the given (toMonth, months) pair. */
+function monthsForPeriod(period: Period, toMonth?: string): { from: string; to: string } {
+  const to = toMonth ?? currentMonth();
+  const count = period === "month" ? 1 : period === "three" ? 3 : 6;
+  const [ey, em] = to.split("-").map(Number);
+  const fromYear = em! - count < 1 ? ey! - 1 : ey!;
+  const fromMonth = ((em! - count - 1 + 12) % 12) + 1;
+  return {
+    from: `${fromYear}-${String(fromMonth).padStart(2, "0")}`,
+    to,
+  };
 }
 
 function pct(part: number, whole: number): number {
@@ -24,87 +47,118 @@ function pct(part: number, whole: number): number {
   return Math.round((part / whole) * 100);
 }
 
+function diffLabel(curr: number, prev: number): { text: string; dir: "up" | "down" } | null {
+  if (prev <= 0) return null;
+  const diff = Math.round(((curr - prev) / prev) * 100);
+  if (diff === 0) return null;
+  return { text: `${Math.abs(diff)}%`, dir: diff > 0 ? "up" : "down" };
+}
+
+function budgetStatusColor(status: BudgetPerformanceView["status"]): "positive" | "warning" | "danger" {
+  return status === "exceeded" ? "danger" : status === "approaching" ? "warning" : "positive";
+}
+
+function budgetBadgeTone(status: BudgetPerformanceView["status"]): "neutral" | "success" | "warning" | "danger" | "primary" {
+  return status === "exceeded" ? "danger" : status === "approaching" ? "warning" : "success";
+}
+
 export function ReportsPage() {
   const { user } = useAuth();
   const { t, locale } = useI18n();
   const getError = useErrorMessage();
+  const currency = user?.defaultCurrency ?? "EGP";
 
   const [period, setPeriod] = useState<Period>("month");
   const [month, setMonth] = useState(currentMonth());
-  const [dashboard, setDashboard] = useState<DashboardView | null>(null);
-  const [prevDashboard, setPrevDashboard] = useState<DashboardView | null>(null);
+  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
+  const [categories, setCategories] = useState<Awaited<ReturnType<typeof analyticsApi.categoryBreakdown>> | null>(null);
+  const [netWorth, setNetWorth] = useState<NetWorthPoint[] | null>(null);
+  const [budgets, setBudgets] = useState<BudgetPerformanceView[] | null>(null);
+  const [goals, setGoals] = useState<SavingsGoalProgressView[] | null>(null);
+  const [comparison, setComparison] = useState<PeriodComparison[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [entered, setEntered] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const currency = user?.defaultCurrency ?? "EGP";
-  const distribution = useMemo(() => loadDistribution(), []);
-  const showMonth = period === "month";
+  const range = useMemo(() => monthsForPeriod(period, month), [period, month]);
+  const query: AnalyticsQuery = useMemo(
+    () => ({ from: range.from, to: range.to, currency }),
+    [range, currency],
+  );
 
   const load = useCallback(() => {
     let cancelled = false;
     setError(null);
-    setDashboard(null);
-    setPrevDashboard(null);
+    setLoading(true);
 
-    api.dashboard
-      .get({ month, currency })
-      .then((dash) => {
+    Promise.all([
+      analyticsApi.overview(query),
+      analyticsApi.categoryBreakdown({ ...query, limit: 10 }),
+      analyticsApi.netWorthTrend(query),
+      analyticsApi.budgetPerformance({}),
+      analyticsApi.savingsGoalProgress({}),
+      analyticsApi.periodComparison({ month: month, months: period === "month" ? 1 : period === "three" ? 1 : 1 }),
+    ])
+      .then(([ov, cats, nwt, b, g, pc]) => {
         if (cancelled) return;
-        setDashboard(dash);
-        const pm = prevMonth(month);
-        if (pm) {
-          return api.dashboard.get({ month: pm, currency });
-        }
-        return null;
-      })
-      .then((prev) => {
-        if (cancelled) return;
-        setPrevDashboard(prev ?? null);
-        setTimeout(() => setEntered(true), 30);
+        setOverview(ov);
+        setCategories(cats);
+        setNetWorth(nwt);
+        setBudgets(b);
+        setGoals(g);
+        setComparison(pc);
       })
       .catch((err) => {
-        if (!cancelled) setError(getError(err, "errors.generic"));
+        if (!cancelled) {
+          if (err instanceof HttpError && (err.status === 401 || err.status === 403)) {
+            setError("errors.sessionExpired");
+          } else {
+            setError(getError(err, "errors.network"));
+          }
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
-  }, [month, currency, getError]);
+    return () => {
+      cancelled = true;
+    };
+  }, [query, month, period, currency, getError]);
 
-  useEffect(() => { setEntered(false); }, [month]);
   useEffect(() => load(), [load]);
 
-  const income = dashboard?.monthSummary.incomeMinor ?? 0;
-  const expenses = dashboard?.monthSummary.expensesMinor ?? 0;
-  const investTarget = monthlyTargets(income, distribution).investMinor;
-  const available = Math.max(0, income - expenses - investTarget);
+  /* --- derived data --- */
+  const monthPoints = overview?.months ?? [];
+  const currentMonthData = monthPoints.find((m) => m.month === range.to && m.currency === currency);
+  const income = currentMonthData?.incomeMinor ?? 0;
+  const expenses = Math.abs(currentMonthData?.expensesMinor ?? 0);
+  const savings = currentMonthData?.savingsMinor ?? 0;
+  const savingsRate = currentMonthData?.savingsRatePercent ?? null;
   const hasData = income > 0 || expenses > 0;
-  const investPctVal = pct(investTarget, income);
-  const expensePctVal = pct(expenses, income);
-  const availablePctVal = pct(available, income);
-  const categories = dashboard?.spendingByCategory ?? [];
-  const trend = dashboard?.trend ?? [];
 
-  const prevIncome = prevDashboard?.monthSummary.incomeMinor ?? 0;
-  const prevExpenses = prevDashboard?.monthSummary.expensesMinor ?? 0;
-  const prevInvestTarget = monthlyTargets(prevIncome, distribution).investMinor;
-  const hasPrev = prevDashboard !== null && prevIncome > 0;
-
-  function diffLabel(curr: number, prev: number): { text: string; dir: "up" | "down" } | null {
-    if (prev <= 0) return null;
-    const diff = Math.round(((curr - prev) / prev) * 100);
-    if (diff === 0) return null;
-    return { text: `${Math.abs(diff)}%`, dir: diff > 0 ? "up" : "down" };
-  }
-
-  const insight = useMemo(() => {
-    if (!hasData) return t("reports.insightEmpty");
-    if (income > 0 && expenses === 0) return t("reports.insightNoExpenses");
-    if (income === 0 && expenses > 0) return t("reports.insightNoIncome");
-    if (expensePctVal > 0) {
-      const key = investPctVal > 0 ? "reports.insightExpensesPercent" : "reports.insightExpensesPercent";
-      return t(key).replace("{percent}", `${expensePctVal}%`);
-    }
-    return t("reports.insightEmpty");
-  }, [hasData, income, expenses, expensePctVal, investPctVal, t]);
+  const currentCurrencyComparison = useMemo(
+    () => comparison?.find((c) => c.currency === currency),
+    [comparison, currency],
+  );
+  const trendData = useMemo(
+    () =>
+      monthPoints
+        .filter((m) => m.currency === currency)
+        .map((m) => ({
+          month: m.month,
+          incomeMinor: m.incomeMinor,
+          expensesMinor: m.expensesMinor,
+        })),
+    [monthPoints, currency],
+  );
+  const activeGoals = useMemo(
+    () => goals?.filter((g) => !g.isArchived) ?? [],
+    [goals],
+  );
+  const activeBudgets = useMemo(
+    () => budgets?.filter((b) => !b.isArchived) ?? [],
+    [budgets],
+  );
 
   if (error) {
     return (
@@ -116,317 +170,336 @@ export function ReportsPage() {
     );
   }
 
-  if (!dashboard) {
+  if (loading) {
     return (
-      <div className="page">
-        <SkeletonCard rows={5} />
+      <div className="page analytics-page">
+        <header className="analytics-header">
+          <PageHeader
+            title={t("reports.title")}
+            subtitle={t("reports.subtitle")}
+            controls={
+              <SegmentedControl
+                label={t("reports.period")}
+                value={period}
+                onChange={setPeriod}
+                options={[
+                  { value: "month", label: t("reports.thisMonth") },
+                  { value: "three", label: t("reports.lastThree") },
+                  { value: "six", label: t("reports.lastSix") },
+                ]}
+              />
+            }
+          />
+        </header>
+        <SkeletonCard rows={4} />
       </div>
     );
   }
 
-  if (!hasData) {
+  if (!hasData && !activeBudgets.length && !activeGoals.length) {
     return (
-      <div className="page reports-page">
-        <PageHeader
-          title={t("reports.title")}
-          subtitle={t("reports.subtitle")}
-          controls={
-            <SegmentedControl
-              label={t("reports.period")}
-              value={period}
-              onChange={setPeriod}
-              options={[
-                { value: "month", label: t("reports.thisMonth") },
-                { value: "three", label: t("reports.lastThree") },
-                { value: "six", label: t("reports.lastSix") },
-              ]}
-            />
+      <div className="page analytics-page">
+        <header className="analytics-header">
+          <PageHeader
+            title={t("reports.title")}
+            subtitle={t("reports.subtitle")}
+            controls={
+              <SegmentedControl
+                label={t("reports.period")}
+                value={period}
+                onChange={setPeriod}
+                options={[
+                  { value: "month", label: t("reports.thisMonth") },
+                  { value: "three", label: t("reports.lastThree") },
+                  { value: "six", label: t("reports.lastSix") },
+                ]}
+              />
+            }
+          />
+        </header>
+        <EmptyState
+          icon="inbox"
+          title={t("reports.noData")}
+          subtitle={t("reports.noDataHint")}
+          action={
+            <Button to="/add" icon="plus" variant="primary">
+              {t("reports.emptyAddIncome")}
+            </Button>
           }
         />
-        <div className="rp-empty">
-          <div className="rp-empty-icon">👋</div>
-          <h2 className="rp-empty-title">{t("reports.emptyTitle")}</h2>
-          <p className="rp-empty-text">{t("reports.emptySubtitle")}</p>
-          <div className="rp-empty-actions">
-            <Link to="/add"><Button variant="primary" icon="plus">{t("reports.emptyAddIncome")}</Button></Link>
-            <Link to="/add"><Button variant="secondary" icon="plus">{t("reports.emptyAddExpense")}</Button></Link>
-          </div>
-        </div>
       </div>
     );
   }
 
-  const monthLabel = formatMonth(month);
+  const monthLabel = formatMonth(range.to);
 
   return (
-    <div className="page reports-page">
-      {/* 1. Header */}
-      <div className={`rp-stagger ${entered ? "rp-entered" : ""}`} style={{ "--i": 0 } as React.CSSProperties}>
+    <div className="page analytics-page">
+      {/* Header */}
+      <header className="analytics-header">
         <PageHeader
           title={t("reports.title")}
           subtitle={t("reports.subtitle")}
           controls={
-            <SegmentedControl
-              label={t("reports.period")}
-              value={period}
-              onChange={setPeriod}
-              options={[
-                { value: "month", label: t("reports.thisMonth") },
-                { value: "three", label: t("reports.lastThree") },
-                { value: "six", label: t("reports.lastSix") },
-              ]}
-            />
+            <>
+              <SegmentedControl
+                label={t("reports.period")}
+                value={period}
+                onChange={setPeriod}
+                options={[
+                  { value: "month", label: t("reports.thisMonth") },
+                  { value: "three", label: t("reports.lastThree") },
+                  { value: "six", label: t("reports.lastSix") },
+                ]}
+              />
+            </>
           }
         />
-      </div>
-
-      {showMonth && (
-        <div className="controls controls-month rp-stagger" style={{ "--i": 1 } as React.CSSProperties}>
-          <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} aria-label={t("common.month")} className="month-input" />
-        </div>
-      )}
-
-      {/* 2. Financial Summary Card */}
-      <div className="rp-stagger" style={{ "--i": 2 } as React.CSSProperties}>
-        <div className="rp-summary">
-          <div className="rp-summary-header">
-            <span className="rp-summary-title">{t("reports.summaryTitle").replace("{month}", monthLabel)}</span>
-          </div>
-
-          <div className="rp-summary-rows">
-            <div className="rp-row">
-              <span className="rp-row-label"><Icon name="trendup" size={14} /> {t("reports.income")}</span>
-              <span className="rp-row-value rp-income"><AnimatedNumber value={income} format={(v) => formatCurrency(v, currency)} /></span>
-            </div>
-            <div className="rp-row">
-              <span className="rp-row-label"><Icon name="trenddown" size={14} /> {t("reports.expenses")}</span>
-              <span className="rp-row-value rp-expense"><AnimatedNumber value={expenses} format={(v) => formatCurrency(v, currency)} /></span>
-            </div>
-            <div className="rp-row">
-              <span className="rp-row-label"><Icon name="star" size={14} /> {t("reports.invest")}</span>
-              <span className="rp-row-value rp-invest"><AnimatedNumber value={investTarget} format={(v) => formatCurrency(v, currency)} /></span>
-            </div>
-            <div className="rp-divider" />
-            <div className="rp-row rp-available-row">
-              <span className="rp-row-label rp-available-label">{t("reports.available")}</span>
-              <span className="rp-row-value rp-available"><AnimatedNumber value={available} format={(v) => formatCurrency(v, currency)} /></span>
-            </div>
-          </div>
-
-          {/* 3. Progress Bars */}
-          {income > 0 && (
-            <div className="rp-progress-section">
-              <span className="rp-progress-title">{t("reports.progressTitle")}</span>
-              <div className="rp-progress-bars">
-                <div className="rp-progress-row">
-                  <span className="rp-progress-label">{t("reports.expenses")} {expensePctVal}%</span>
-                  <div className="rp-progress-track"><div className="rp-progress-fill rp-fill-expense" style={{ width: `${expensePctVal}%` }} /></div>
-                </div>
-                <div className="rp-progress-row">
-                  <span className="rp-progress-label">{t("reports.invest")} {investPctVal}%</span>
-                  <div className="rp-progress-track"><div className="rp-progress-fill rp-fill-invest" style={{ width: `${investPctVal}%` }} /></div>
-                </div>
-                <div className="rp-progress-row">
-                  <span className="rp-progress-label">{t("reports.available")} {availablePctVal}%</span>
-                  <div className="rp-progress-track"><div className="rp-progress-fill rp-fill-available" style={{ width: `${availablePctVal}%` }} /></div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 4. Insight */}
-      <div className="rp-stagger" style={{ "--i": 3 } as React.CSSProperties}>
-        <div className="rp-insight">
-          <Icon name="info" size={18} className="rp-insight-icon" />
-          <div className="rp-insight-content">
-            <span className="rp-insight-title">{t("reports.insightTitle")}</span>
-            <p className="rp-insight-text">{insight}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Chart */}
-      {(showMonth ? trend : trend).length > 0 && (
-        <div className="rp-stagger" style={{ "--i": 4 } as React.CSSProperties}>
-          <div className="rp-card">
-            <div className="rp-card-header">
-              <h2>{t("reports.chartTitle")}</h2>
-            </div>
-            <ReportChart
-              data={showMonth
-                ? [{ month, incomeMinor: income, expensesMinor: expenses }]
-                : trend
-              }
-              currency={currency}
-              showInvest={investTarget > 0}
-              investData={showMonth
-                ? [{ month, investMinor: investTarget }]
-                : trend.map((p) => ({ month: p.month, investMinor: monthlyTargets(p.incomeMinor, distribution).investMinor }))
-              }
+        {period === "month" && (
+          <div className="analytics-month-picker">
+            <Input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              aria-label={t("common.month")}
+              className="month-input"
             />
-            <div className="rp-legend">
-              <span className="rp-legend-item"><i className="rp-legend-dot rp-dot-income" /> {t("reports.income")}</span>
-              <span className="rp-legend-item"><i className="rp-legend-dot rp-dot-expense" /> {t("reports.expenses")}</span>
-              {investTarget > 0 && <span className="rp-legend-item"><i className="rp-legend-dot rp-dot-invest" /> {t("reports.invest")}</span>}
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </header>
 
-      {/* 6. Spending by Category */}
-      {categories.length > 0 && (
-        <div className="rp-stagger" style={{ "--i": 5 } as React.CSSProperties}>
-          <div className="rp-card">
-            <div className="rp-card-header">
-              <h2>{t("reports.whereMoneyGoes")}</h2>
-            </div>
-            <ul className="rp-cat-list">
-              {categories.slice(0, 6).map((cat) => (
-                <li key={cat.categoryId ?? "none"} className="rp-cat-item">
-                  <span className="rp-cat-emoji">{categoryEmoji(cat.categoryName, "expense")}</span>
-                  <div className="rp-cat-info">
-                    <div className="rp-cat-top">
-                      <span className="rp-cat-name">{localizeCategoryName(cat.categoryName, locale)}</span>
-                      <span className="rp-cat-amount">{formatCurrency(cat.amountMinor, currency)}</span>
-                    </div>
-                    <div className="rp-progress-track"><div className="rp-progress-fill rp-fill-category" style={{ width: `${cat.percentOfTotal}%` }} /></div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+      <div className="analytics-grid">
+        {/* 1. KPI Cards */}
+        <section className="analytics-section">
+          <h2 className="section-title">{t("reports.summaryTitle", { month: monthLabel })}</h2>
+          <div className="stats-grid">
+            <StatCard label={t("reports.income")} value={income} format={(v) => formatCurrency(v, currency)} tone="positive" icon="trendup" />
+            <StatCard label={t("reports.expenses")} value={expenses} format={(v) => formatCurrency(v, currency)} tone="negative" icon="trenddown" />
+            <StatCard label={t("reports.savings")} value={savings} format={(v) => formatCurrency(v, currency)} tone="neutral" icon="star" />
+            {savingsRate !== null && (
+              <StatCard
+                label={t("reports.savingsRate")}
+                value={savingsRate}
+                format={(v) => `${v}%`}
+                tone="neutral"
+                icon="info"
+                sub={
+                  <span className="stat-sub-text">
+                    {pct(savings, income)}% {t("reports.savingsRateOfIncome")}
+                  </span>
+                }
+              />
+            )}
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* Empty category state */}
-      {categories.length === 0 && expenses > 0 && (
-        <div className="rp-stagger" style={{ "--i": 5 } as React.CSSProperties}>
-          <div className="rp-card">
-            <div className="rp-card-header">
-              <h2>{t("reports.byCategory")}</h2>
-            </div>
-            <EmptyState icon="trenddown" title={t("reports.noData")} subtitle={t("reports.noDataHint")} compact />
+        {/* 2. Income vs Expense Trend Chart */}
+        <section className="analytics-section">
+          <div className="section-header">
+            <h2 className="section-title">{t("reports.chartTitle")}</h2>
+            <span className="section-hint">{t("reports.trendHint")}</span>
           </div>
-        </div>
-      )}
+          {trendData.length > 0 ? (
+            <TrendChart data={trendData} currency={currency} />
+          ) : (
+            <EmptyState icon="trenddown" title={t("reports.noData")} subtitle={t("reports.noTrendHint")} compact />
+          )}
+        </section>
 
-      {/* 7. Investment Card */}
-      {investTarget > 0 && (
-        <div className="rp-stagger" style={{ "--i": 6 } as React.CSSProperties}>
-          <div className="rp-card rp-invest-card">
-            <div className="rp-invest-top">
-              <Icon name="star" size={18} className="rp-invest-icon" />
-              <div className="rp-invest-info">
-                <span className="rp-invest-label">{t("reports.investmentCard")}</span>
-                <span className="rp-invest-amount">{formatCurrency(investTarget, currency)}</span>
-              </div>
-              <span className="rp-invest-pct">{t("reports.investmentPercent").replace("{percent}", `${investPctVal}%`)}</span>
-            </div>
-            <div className="rp-progress-track rp-progress-track-lg">
-              <div className="rp-progress-fill rp-fill-invest" style={{ width: `${investPctVal}%` }} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 8. Month Comparison */}
-      {hasPrev && (
-        <div className="rp-stagger" style={{ "--i": 7 } as React.CSSProperties}>
-          <div className="rp-card">
-            <div className="rp-card-header">
-              <h2>{t("reports.vsLastMonth")}</h2>
-            </div>
-            <div className="rp-compare">
-              {[ 
-                { label: t("reports.income"), curr: income, prev: prevIncome, tone: "income" },
-                { label: t("reports.expenses"), curr: expenses, prev: prevExpenses, tone: "expense" },
-                { label: t("reports.invest"), curr: investTarget, prev: prevInvestTarget, tone: "invest" },
+        {/* 3. Period Comparison */}
+        {currentCurrencyComparison && (
+          <section className="analytics-section">
+            <h2 className="section-title">{t("reports.vsLastMonth")}</h2>
+            <div className="compare-grid">
+              {[
+                { label: t("reports.income"), curr: currentCurrencyComparison.currentIncomeMinor, prev: currentCurrencyComparison.previousIncomeMinor, tone: "income" as const },
+                { label: t("reports.expenses"), curr: currentCurrencyComparison.currentExpensesMinor, prev: currentCurrencyComparison.previousExpensesMinor, tone: "expense" as const },
               ].map((row) => {
                 const d = diffLabel(row.curr, row.prev);
+                const toneClass = d
+                  ? d.dir === "up"
+                    ? row.tone === "expense"
+                      ? "compare-diff-bad"
+                      : "compare-diff-good"
+                    : row.tone === "expense"
+                      ? "compare-diff-good"
+                      : "compare-diff-bad"
+                  : "";
                 return (
-                  <div key={row.label} className="rp-compare-row">
-                    <span className="rp-compare-label">{row.label}</span>
-                    <span className={`rp-compare-diff ${d ? (d.dir === "up" ? (row.tone === "expense" ? "rp-diff-bad" : "rp-diff-good") : (row.tone === "expense" ? "rp-diff-good" : "rp-diff-bad")) : ""}`}>
+                  <div key={row.label} className="compare-row">
+                    <span className="compare-label">{row.label}</span>
+                    <span className={`compare-diff ${toneClass}`}>
                       {d ? (
                         <>
                           <Icon name={d.dir === "up" ? "trendup" : "trenddown"} size={14} />
                           {d.text} {t(`reports.direction${d.dir === "up" ? "Up" : "Down"}`)}
                         </>
                       ) : (
-                        <span className="rp-compare-same">—</span>
+                        <span className="compare-same">—</span>
                       )}
                     </span>
                   </div>
                 );
               })}
             </div>
-          </div>
-        </div>
-      )}
+          </section>
+        )}
 
-      {/* 12. Quick Actions */}
-      <div className="rp-stagger" style={{ "--i": 8 } as React.CSSProperties}>
-        <div className="rp-actions">
-          <Link to="/add" className="rp-action-btn rp-action-income">
-            <Icon name="plus" size={16} />
-            {t("reports.quickAddIncome")}
-          </Link>
-          <Link to="/add" className="rp-action-btn rp-action-expense">
-            <Icon name="minus" size={16} />
-            {t("reports.quickAddExpense")}
-          </Link>
-          <Link to="/goals" className="rp-action-btn rp-action-invest">
-            <Icon name="target" size={16} />
-            {t("reports.quickAddInvest")}
-          </Link>
+        <div className="analytics-sidebar">
+          {/* 4. Expense Category Breakdown */}
+          <section className="analytics-section">
+            <h2 className="section-title">{t("reports.whereMoneyGoes")}</h2>
+            {categories && categories.length > 0 ? (
+              <ul className="category-list">
+                {categories.map((cat) => (
+                  <li key={cat.categoryId ?? "none"} className="category-item">
+                    <span className="category-emoji">{categoryEmoji(cat.categoryName, "expense")}</span>
+                    <div className="category-info">
+                      <div className="category-top">
+                        <span className="category-name">{localizeCategoryName(cat.categoryName, locale)}</span>
+                        <span className="category-amount">{formatCurrency(cat.totalMinor, currency)}</span>
+                      </div>
+                      <ProgressBar value={cat.percentOfTotal} tone={cat.percentOfTotal >= 75 ? "danger" : cat.percentOfTotal >= 50 ? "warning" : "primary"} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState icon="trenddown" title={t("reports.noData")} subtitle={t("reports.noDataHint")} compact />
+            )}
+          </section>
+
+          {/* 5. Net Worth Trend */}
+          <section className="analytics-section">
+            <h2 className="section-title">{t("reports.netWorth")}</h2>
+            {netWorth && netWorth.length > 0 ? (
+              <div className="networth-list">
+                {netWorth
+                  .filter((p) => p.currency === currency)
+                  .map((point) => (
+                    <div key={point.month} className="networth-item">
+                      <span className="networth-month">{formatMonth(point.month)}</span>
+                      <span className="networth-amount">{formatCurrency(point.totalMinor, currency)}</span>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <SkeletonBlock height={80} />
+            )}
+          </section>
         </div>
+
+        {/* 6. Budget Performance */}
+        <section className="analytics-section">
+          <div className="section-header">
+            <h2 className="section-title">{t("reports.budgets")}</h2>
+          </div>
+          {activeBudgets.length > 0 ? (
+            <div className="budget-list">
+              {activeBudgets.map((budget) => (
+                <div key={budget.id} className="budget-item">
+                  <div className="budget-top">
+                    <span className="budget-name">{budget.categoryName}</span>
+                    <Badge tone={budgetBadgeTone(budget.status)}>
+                      {t(budget.status === "normal" ? "budgets.statusNormal" : budget.status === "approaching" ? "budgets.statusApproaching" : "budgets.statusExceeded")}
+                    </Badge>
+                  </div>
+                  <div className="budget-amounts">
+                    <span className="budget-spent">{formatCurrency(budget.spentMinor, currency)}</span>
+                    <span className="budget-remaining"> {t("reports.remaining")}: {formatCurrency(budget.remainingMinor, currency)}</span>
+                  </div>
+                  <ProgressBar value={budget.percentUsed} tone={budgetStatusColor(budget.status)} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon="target" title={t("budgets.empty")} subtitle={t("budgets.emptyHint")} compact />
+          )}
+        </section>
+
+        {/* 7. Savings Goal Progress */}
+        <section className="analytics-section">
+          <div className="section-header">
+            <h2 className="section-title">{t("reports.savingsGoals")}</h2>
+          </div>
+          {activeGoals.length > 0 ? (
+            <div className="goals-list">
+              {activeGoals.map((goal) => (
+                <div key={goal.id} className="goal-item">
+                  <div className="goal-top">
+                    <span className="goal-name">{goal.name}</span>
+                    <Badge tone={goal.achieved ? "success" : "neutral"}>
+                      {goal.achieved ? t("savings.achieved") : `${goal.progressPercent}%`}
+                    </Badge>
+                  </div>
+                  <div className="goal-amounts">
+                    <span className="goal-current">{formatCurrency(goal.currentMinor, currency)}</span>
+                    <span className="goal-target"> {t("reports.ofTarget")}: {formatCurrency(goal.targetAmountMinor, currency)}</span>
+                  </div>
+                  <ProgressBar value={goal.progressPercent} tone={goal.achieved ? "positive" : "primary"} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon="star" title={t("savings.empty")} subtitle={t("savings.emptyHint")} compact />
+          )}
+        </section>
       </div>
     </div>
   );
 }
 
-/* ── Chart ────────────────────────────────────────────── */
+/* ── Trend Chart (CSS-based bar chart, no external library) ────────────── */
 
-function ReportChart({
-  data,
-  currency,
-  showInvest,
-  investData,
-}: {
-  data: { month: string; incomeMinor: number; expensesMinor: number }[];
-  currency: string;
-  showInvest: boolean;
-  investData: { month: string; investMinor: number }[];
-}) {
+interface TrendPoint {
+  month: string;
+  incomeMinor: number;
+  expensesMinor: number;
+}
+
+function TrendChart({ data, currency }: { data: TrendPoint[]; currency: string }) {
   const { t } = useI18n();
   const max = Math.max(
-    ...data.map((p) => Math.max(p.incomeMinor, p.expensesMinor)),
-    ...investData.map((p) => p.investMinor),
+    ...data.map((p) => Math.max(p.incomeMinor, Math.abs(p.expensesMinor))),
     1,
   );
 
-  const investMap = useMemo(() => {
-    const m: Record<string, number> = {};
-    investData.forEach((p) => { m[p.month] = p.investMinor; });
-    return m;
-  }, [investData]);
-
   return (
-    <div className="rp-chart" role="img" aria-label={t("reports.chartTitle")}>
-      {data.map((point) => (
-        <div key={point.month} className="rp-chart-col">
-          <div className="rp-chart-bars">
-            <div className="rp-chart-bar rp-bar-income" style={{ height: `${(point.incomeMinor / max) * 100}%` }} title={formatCurrency(point.incomeMinor, currency)} />
-            <div className="rp-chart-bar rp-bar-expense" style={{ height: `${(point.expensesMinor / max) * 100}%` }} title={formatCurrency(point.expensesMinor, currency)} />
-            {showInvest && (
-              <div className="rp-chart-bar rp-bar-invest" style={{ height: `${((investMap[point.month] ?? 0) / max) * 100}%` }} title={formatCurrency(investMap[point.month] ?? 0, currency)} />
-            )}
+    <div className="trend-chart" role="img" aria-label={t("reports.chartTitle")}>
+      {data.map((point) => {
+        const incomeHeight = (point.incomeMinor / max) * 100;
+        const expenseHeight = (Math.abs(point.expensesMinor) / max) * 100;
+        const monthLabel = formatMonth(point.month).split(" ")[0];
+        return (
+          <div key={point.month} className="trend-col">
+            <div className="trend-bars">
+              {point.incomeMinor > 0 && (
+                <div
+                  className="trend-bar trend-bar-income"
+                  style={{ height: `${incomeHeight}%` }}
+                  title={`${formatCurrency(point.incomeMinor, currency)}`}
+                  role="img"
+                  aria-label={`${t("reports.income")}: ${formatCurrency(point.incomeMinor, currency)}`}
+                />
+              )}
+              {point.expensesMinor !== 0 && (
+                <div
+                  className="trend-bar trend-bar-expense"
+                  style={{ height: `${expenseHeight}%` }}
+                  title={`${formatCurrency(point.expensesMinor, currency)}`}
+                  role="img"
+                  aria-label={`${t("reports.expenses")}: ${formatCurrency(point.expensesMinor, currency)}`}
+                />
+              )}
+            </div>
+            <span className="trend-label">{monthLabel}</span>
           </div>
-          <span className="rp-chart-label">{formatMonth(point.month).split(" ")[0]}</span>
-        </div>
-      ))}
+        );
+      })}
+      <div className="trend-legend">
+        <span className="trend-legend-item"><i className="trend-dot trend-dot-income" /> {t("reports.income")}</span>
+        <span className="trend-legend-item"><i className="trend-dot trend-dot-expense" /> {t("reports.expenses")}</span>
+      </div>
     </div>
   );
 }

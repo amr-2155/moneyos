@@ -192,6 +192,101 @@ vi.mock("../lib/api", () => {
   return { ApiError, api, getAccessToken, getRefreshToken, setTokens, clearTokens };
 });
 
+vi.mock("../lib/analyticsApi", () => {
+  const mockOverview = {
+    query: {},
+    months: [
+      { month: "2026-08", currency: "USD", incomeMinor: 50000, expensesMinor: -30000, savingsMinor: 20000, savingsRatePercent: 40 },
+      { month: "2026-08", currency: "EGP", incomeMinor: 50000, expensesMinor: -30000, savingsMinor: 20000, savingsRatePercent: 40 },
+    ],
+    spendingByCategory: [
+      { categoryId: "c1", categoryName: "Food", currency: "EGP", totalMinor: 15000, percentOfTotal: 50 },
+      { categoryId: "c2", categoryName: "Transport", currency: "EGP", totalMinor: 10000, percentOfTotal: 33 },
+    ],
+    netWorthTrend: [
+      { month: "2026-08", currency: "USD", totalMinor: 50000 },
+      { month: "2026-08", currency: "EGP", totalMinor: 50000 },
+    ],
+  };
+
+  const mockGoal = {
+    id: "g1",
+    name: "Emergency fund",
+    targetAmountMinor: 100000,
+    currentMinor: 25000,
+    currency: "EGP",
+    targetDate: null,
+    progressPercent: 25,
+    achieved: false,
+    remainingMinor: 75000,
+    isArchived: false,
+  };
+
+  const mockBudget = {
+    id: "b1",
+    categoryId: "cat1",
+    categoryName: "Food & Dining",
+    period: "2026-08",
+    amountMinor: 20000,
+    currency: "EGP",
+    spentMinor: 5000,
+    remainingMinor: 15000,
+    percentUsed: 25,
+    status: "normal",
+    warningThresholdPercent: 75,
+    isArchived: false,
+  };
+
+  const mockComparison = [
+    {
+      from: "2026-07",
+      to: "2026-08",
+      currency: "USD",
+      currentIncomeMinor: 50000,
+      currentExpensesMinor: -30000,
+      previousIncomeMinor: 20000,
+      previousExpensesMinor: -16000,
+      incomeChangePercent: 150,
+      expensesChangePercent: -50,
+    },
+    {
+      from: "2026-07",
+      to: "2026-08",
+      currency: "EGP",
+      currentIncomeMinor: 50000,
+      currentExpensesMinor: -30000,
+      previousIncomeMinor: 20000,
+      previousExpensesMinor: -16000,
+      incomeChangePercent: 150,
+      expensesChangePercent: -50,
+    },
+  ];
+
+  const HttpError = class HttpError extends Error {
+    constructor(
+      message: string,
+      public readonly status: number,
+      public readonly code: string,
+    ) {
+      super(message);
+      this.name = "HttpError";
+    }
+  };
+
+  const analyticsApi = {
+    overview: vi.fn(async () => mockOverview),
+    monthlySummary: vi.fn(async () => mockOverview.months),
+    categoryBreakdown: vi.fn(async () => mockOverview.spendingByCategory),
+    incomeExpenseTrend: vi.fn(async () => mockOverview.months),
+    periodComparison: vi.fn(async () => mockComparison),
+    netWorthTrend: vi.fn(async () => mockOverview.netWorthTrend),
+    budgetPerformance: vi.fn(async () => [mockBudget]),
+    savingsGoalProgress: vi.fn(async () => [mockGoal]),
+  };
+
+  return { analyticsApi, HttpError };
+});
+
 describe("pages", () => {
   beforeEach(() => {
     localStorage.clear();
