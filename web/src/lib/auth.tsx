@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, type PublicUser } from "./api";
+import { api, getAccessToken, setTokens, type PublicUser } from "./api";
 import { db } from "./db";
 
 interface AuthContextValue {
@@ -20,11 +20,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const me = await api.auth.me();
         if (!cancelled) setUser(me);
+
+        // If no real JWT token is stored, attempt backend auth to get one.
+        // This enables authenticated API calls (e.g. analytics) in dev.
+        const token = getAccessToken();
+        if (!token || token === "local") {
+          try {
+            // Try login first; fall back to signup on 401 (user not yet created).
+            const credentials = { email: me.email, password: "local", name: me.name };
+            let res = await fetch("/api/auth/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: me.email, password: "local" }),
+            });
+            if (res.status === 401) {
+              res = await fetch("/api/auth/signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(credentials),
+              });
+            }
+            if (res.ok) {
+              const data = await res.json() as { tokens: { accessToken: string; refreshToken: string } };
+              if (data.tokens.accessToken && data.tokens.accessToken !== "local") {
+                setTokens(data.tokens.accessToken, data.tokens.refreshToken);
+              }
+            }
+          } catch {
+            // Backend unavailable — stay in local-only mode.
+          }
+        }
       } catch {
+        // Local Dexie unavailable — try backend auth only.
         try {
-          await api.auth.signup({ email: "user@moneyos.local", password: "local", name: "User" });
-          const me = await api.auth.me();
-          if (!cancelled) setUser(me);
+          const result = await api.auth.login({
+            email: "user@moneyos.local",
+            password: "local",
+          });
+          if (!cancelled) setUser(result.user);
         } catch {
           // IndexedDB might be unavailable
         }
@@ -33,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     void restore();
-    return () => { cancelled = true; };
+    return () => { cancelled = true };
   }, []);
 
   const updateUser = useCallback(async (patch: { name?: string; defaultCurrency?: string }) => {

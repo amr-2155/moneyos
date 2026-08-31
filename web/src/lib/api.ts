@@ -290,20 +290,75 @@ export const api = {
         await db.users.put(user);
       }
       await ensureDefaultCategories();
-      const tokens = { accessToken: "local", refreshToken: "local", refreshExpiresAt: Date.now() + 86400000 };
+
+      // Attempt real backend auth — store real JWT for API calls.
+      // Falls back to local-only mode if the backend is unreachable.
+      let accessToken = "local";
+      let refreshToken = "local";
+      try {
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const data = await res.json() as { user: PublicUser; tokens: TokenPair };
+          accessToken = data.tokens.accessToken;
+          refreshToken = data.tokens.refreshToken;
+        }
+      } catch {
+        // Backend unavailable — continue in local-only mode.
+      }
+
+      const tokens = { accessToken, refreshToken, refreshExpiresAt: Date.now() + 86400000 };
       setTokens(tokens.accessToken, tokens.refreshToken);
       return { user: user as PublicUser, tokens };
     },
 
-    login: async (_body: { email: string; password: string }) => {
+    login: async (body: { email: string; password: string }) => {
       const user = await ensureDefaultUser();
       await ensureDefaultCategories();
-      const tokens = { accessToken: "local", refreshToken: "local", refreshExpiresAt: Date.now() + 86400000 };
+
+      // Attempt real backend auth — store real JWT for API calls.
+      // Falls back to local-only mode if the backend is unreachable.
+      let accessToken = "local";
+      let refreshToken = "local";
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const data = await res.json() as { user: PublicUser; tokens: TokenPair };
+          accessToken = data.tokens.accessToken;
+          refreshToken = data.tokens.refreshToken;
+        }
+      } catch {
+        // Backend unavailable — continue in local-only mode.
+      }
+
+      const tokens = { accessToken, refreshToken, refreshExpiresAt: Date.now() + 86400000 };
       setTokens(tokens.accessToken, tokens.refreshToken);
       return { user: user as PublicUser, tokens };
     },
 
     logout: async () => {
+      const token = getAccessToken();
+      if (token && token !== "local") {
+        try {
+          await fetch("/api/auth/logout", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ refreshToken: getRefreshToken() }),
+          });
+        } catch {
+          // ignore network errors on logout
+        }
+      }
       clearTokens();
     },
 
