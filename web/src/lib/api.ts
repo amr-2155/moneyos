@@ -1,7 +1,21 @@
 import { db, CURRENT_USER_ID, uid, type UserRecord, type AccountRecord, type CategoryRecord, type TransactionRecord, type TransferRecord, type BudgetRecord, type SavingsGoalRecord, type SavingsContributionRecord } from "./db";
+import { enqueueSync, toSyncPayload, type SyncEntityType, type SyncOperationType } from "./sync";
 
 const TOKEN_KEY = "moneyos.accessToken";
 const REFRESH_KEY = "moneyos.refreshToken";
+
+/**
+ * Enqueues a sync operation for later background sync.
+ * Type-safe: accepts any object as payload; toSyncPayload strips userId internally.
+ */
+async function queueSync<T extends object>(
+  entity: SyncEntityType,
+  operation: SyncOperationType,
+  entityId: string,
+  payload: T,
+): Promise<void> {
+  await enqueueSync(entity, entityId, operation, toSyncPayload(payload));
+}
 
 export function getAccessToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -419,6 +433,7 @@ export const api = {
         createdAt: new Date().toISOString(),
       };
       await db.accounts.put(record);
+      void queueSync("account", "CREATE", record.id, record);
       return {
         id: record.id,
         name: record.name,
@@ -437,6 +452,7 @@ export const api = {
       if (body.name !== undefined) record.name = body.name;
       if (body.type !== undefined) record.type = body.type;
       await db.accounts.put(record);
+      void queueSync("account", "UPDATE", record.id, record);
       const { balanceMinor } = await getAccountBalance(id);
       return {
         id: record.id,
@@ -455,6 +471,7 @@ export const api = {
       if (!record) throw new ApiError("Account not found", 404, "NOT_FOUND");
       record.isActive = false;
       await db.accounts.put(record);
+      void queueSync("account", "UPDATE", record.id, record);
       const { balanceMinor } = await getAccountBalance(id);
       return {
         id: record.id,
@@ -473,6 +490,7 @@ export const api = {
       if (!record) throw new ApiError("Account not found", 404, "NOT_FOUND");
       record.isActive = true;
       await db.accounts.put(record);
+      void queueSync("account", "UPDATE", record.id, record);
       const { balanceMinor } = await getAccountBalance(id);
       return {
         id: record.id,
@@ -524,6 +542,7 @@ export const api = {
         isArchived: false,
       };
       await db.categories.put(record);
+      void queueSync("category", "CREATE", record.id, record);
       return {
         id: record.id,
         name: record.name,
@@ -543,6 +562,7 @@ export const api = {
       if (body.icon !== undefined) record.icon = body.icon;
       if (body.color !== undefined) record.color = body.color;
       await db.categories.put(record);
+      void queueSync("category", "UPDATE", record.id, record);
       return {
         id: record.id,
         name: record.name,
@@ -560,6 +580,7 @@ export const api = {
       if (!record) throw new ApiError("Category not found", 404, "NOT_FOUND");
       record.isArchived = true;
       await db.categories.put(record);
+      void queueSync("category", "UPDATE", record.id, record);
       return {
         id: record.id,
         name: record.name,
@@ -630,6 +651,7 @@ export const api = {
         createdAt: new Date().toISOString(),
       };
       await db.transactions.put(tx);
+      void queueSync("transaction", "CREATE", tx.id, tx);
       return userTxToView(tx);
     },
 
@@ -641,6 +663,7 @@ export const api = {
       const now = new Date().toISOString();
       tx.reversedAt = now;
       await db.transactions.put(tx);
+      void queueSync("transaction", "UPDATE", tx.id, tx);
 
       const reversal: TransactionRecord = {
         ...tx,
@@ -652,6 +675,7 @@ export const api = {
         createdAt: now,
       };
       await db.transactions.put(reversal);
+      void queueSync("transaction", "CREATE", reversal.id, reversal);
       return userTxToView(reversal);
     },
   },
@@ -727,6 +751,7 @@ export const api = {
         createdAt: new Date().toISOString(),
       };
       await db.transfers.put(transfer);
+      void queueSync("transfer", "CREATE", transfer.id, transfer);
 
       const legOut: TransactionRecord = {
         id: uid(),
@@ -763,6 +788,8 @@ export const api = {
       };
 
       await db.transactions.bulkPut([legOut, legIn]);
+      void queueSync("transaction", "CREATE", legOut.id, legOut);
+      void queueSync("transaction", "CREATE", legIn.id, legIn);
       return { ok: true };
     },
 
@@ -772,10 +799,12 @@ export const api = {
 
       transfer.reversedAt = new Date().toISOString();
       await db.transfers.put(transfer);
+      void queueSync("transfer", "UPDATE", transfer.id, transfer);
 
       const legs = await db.transactions.where("transferId").equals(id).toArray();
       for (const leg of legs) {
         await db.transactions.put(leg);
+        void queueSync("transaction", "UPDATE", leg.id, leg);
       }
 
       return { ok: true };
@@ -957,6 +986,7 @@ export const api = {
         updatedAt: new Date().toISOString(),
       };
       await db.budgets.put(record);
+      void queueSync("budget", "CREATE", record.id, record);
 
       const cat = await db.categories.get(body.categoryId);
       return {
@@ -991,6 +1021,7 @@ export const api = {
       record.updatedAt = new Date().toISOString();
 
       await db.budgets.put(record);
+      void queueSync("budget", "UPDATE", record.id, record);
 
       const cat = await db.categories.get(record.categoryId);
       const now = new Date();
@@ -1040,6 +1071,7 @@ export const api = {
       record.isArchived = true;
       record.updatedAt = new Date().toISOString();
       await db.budgets.put(record);
+      void queueSync("budget", "UPDATE", record.id, record);
 
       const cat = await db.categories.get(record.categoryId);
       return {
@@ -1136,6 +1168,7 @@ export const api = {
         updatedAt: now,
       };
       await db.savingsGoals.put(record);
+      void queueSync("savingsGoal", "CREATE", record.id, record);
 
       return {
         id: record.id,
@@ -1169,6 +1202,7 @@ export const api = {
       record.updatedAt = new Date().toISOString();
 
       await db.savingsGoals.put(record);
+      void queueSync("savingsGoal", "UPDATE", record.id, record);
 
       const progressPercent = record.targetAmountMinor > 0 ? Math.min(100, Math.round((record.currentMinor / record.targetAmountMinor) * 100)) : 0;
       const achieved = record.currentMinor >= record.targetAmountMinor && record.targetAmountMinor > 0;
@@ -1201,6 +1235,7 @@ export const api = {
       record.isArchived = true;
       record.updatedAt = new Date().toISOString();
       await db.savingsGoals.put(record);
+      void queueSync("savingsGoal", "UPDATE", record.id, record);
 
       return {
         id: record.id,
@@ -1259,6 +1294,7 @@ export const api = {
           createdAt: new Date().toISOString(),
         };
         await db.savingsContributions.put(contribution);
+        void queueSync("savingsContribution", "CREATE", contribution.id, contribution);
 
         goal.currentMinor += amountMinor;
         goal.updatedAt = new Date().toISOString();
@@ -1266,6 +1302,7 @@ export const api = {
           goal.achievedAt = goal.achievedAt ?? new Date().toISOString();
         }
         await db.savingsGoals.put(goal);
+        void queueSync("savingsGoal", "UPDATE", goal.id, goal);
 
         const progressPercent = goal.targetAmountMinor > 0 ? Math.min(100, Math.round((goal.currentMinor / goal.targetAmountMinor) * 100)) : 0;
         const achieved = goal.currentMinor >= goal.targetAmountMinor && goal.targetAmountMinor > 0;

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestApp, type TestContext } from "./helpers.js";
 import {
   auth,
@@ -264,6 +264,7 @@ describe("analytics API", () => {
 
   describe("GET /analytics/income-expense-trend", () => {
     it("returns trend over the last 6 months by default", async () => {
+      vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
       const { accessToken } = await signupUser(app, "trend@example.com");
       await seedBasicData(app, accessToken);
 
@@ -277,6 +278,7 @@ describe("analytics API", () => {
     });
 
     it("respects a custom month count", async () => {
+      vi.useRealTimers();
       const { accessToken } = await signupUser(app, "trend2@example.com");
       await seedBasicData(app, accessToken);
 

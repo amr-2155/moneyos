@@ -100,8 +100,26 @@ export interface SavingsContributionRecord {
   createdAt: string;
 }
 
+export interface SyncOperation {
+  operationId: string;
+  entity: string;
+  entityId: string;
+  operation: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+  retryCount: number;
+  status: "PENDING" | "SYNCING" | "SYNCED" | "FAILED";
+  nextRetryAt: string | null;
+  lastError: string | null;
+}
+
+export interface SyncPayload {
+  [key: string]: unknown;
+}
+
+export type SyncQueueTable = Table<SyncOperation, string>;
+
 const DB_NAME = "moneyos";
-const DB_VERSION = 1;
 
 export class MoneyOSDB extends Dexie {
   users!: Table<UserRecord>;
@@ -112,10 +130,11 @@ export class MoneyOSDB extends Dexie {
   budgets!: Table<BudgetRecord>;
   savingsGoals!: Table<SavingsGoalRecord>;
   savingsContributions!: Table<SavingsContributionRecord>;
+  syncQueue!: Table<SyncOperation, string>;
 
   constructor() {
     super(DB_NAME);
-    this.version(DB_VERSION).stores({
+    this.version(1).stores({
       users: "id",
       accounts: "id, userId, [userId+type]",
       categories: "id, userId, [userId+type]",
@@ -124,6 +143,9 @@ export class MoneyOSDB extends Dexie {
       budgets: "id, userId, [userId+period], [userId+categoryId]",
       savingsGoals: "id, userId",
       savingsContributions: "id, goalId",
+    });
+    this.version(2).stores({
+      syncQueue: "operationId, status, [status+nextRetryAt], createdAt",
     });
   }
 }

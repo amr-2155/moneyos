@@ -28,6 +28,8 @@ import { registerTransactionRoutes } from "./modules/transactions/transactions.r
 import { TransactionService } from "./modules/transactions/transactions.service.js";
 import { registerTransferRoutes } from "./modules/transfers/transfers.routes.js";
 import { TransferService } from "./modules/transfers/transfers.service.js";
+import { registerSyncRoutes } from "./modules/sync/sync.routes.js";
+import { SyncService } from "./modules/sync/sync.service.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -75,6 +77,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const savingsGoals = new SavingsGoalService(db);
   const dashboard = new DashboardService(db, accounts, transactions);
   const analytics = new AnalyticsService(db);
+  const syncService = new SyncService(db, accounts, categories, budgets, savingsGoals);
 
   registerHealthRoutes(app, { db, appName: config.appName });
   await app.register(
@@ -88,6 +91,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
       registerSavingsRoutes(api, { service: savingsGoals, authenticate });
       registerDashboardRoutes(api, { service: dashboard, authenticate });
       registerAnalyticsRoutes(api, { service: analytics, authenticate });
+      registerSyncRoutes(api, { service: syncService, authenticate });
     },
     { prefix: "/api" },
   );

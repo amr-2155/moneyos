@@ -1,11 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, getAccessToken, setTokens, type PublicUser } from "./api";
+import { startSyncEngine } from "./sync";
 import { db } from "./db";
 
 interface AuthContextValue {
   user: PublicUser | null;
   loading: boolean;
   updateUser: (patch: { name?: string; defaultCurrency?: string }) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -13,6 +15,22 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const syncStopRef = useRef<(() => void) | null>(null);
+
+  const startSync = useCallback(() => {
+    const token = getAccessToken();
+    if (!token || token === "local") return;
+    if (syncStopRef.current) return; // already running
+    const [stop] = startSyncEngine();
+    syncStopRef.current = stop;
+  }, []);
+
+  const stopSync = useCallback(() => {
+    if (syncStopRef.current) {
+      syncStopRef.current();
+      syncStopRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,10 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } finally {
         if (!cancelled) setLoading(false);
+        startSync();
       }
     }
     void restore();
-    return () => { cancelled = true };
+    return () => { cancelled = true; stopSync(); };
   }, []);
 
   const updateUser = useCallback(async (patch: { name?: string; defaultCurrency?: string }) => {
@@ -74,9 +93,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(updated);
   }, []);
 
+  const logout = useCallback(async () => {
+    stopSync();
+    await api.auth.logout();
+    setUser(null);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, updateUser }),
-    [user, loading, updateUser],
+    () => ({ user, loading, updateUser, logout }),
+    [user, loading, updateUser, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

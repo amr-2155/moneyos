@@ -87,13 +87,21 @@ export async function createTransaction(
     accountId: string;
     categoryId: string;
     date: string;
+    description?: string;
   },
 ): Promise<{ id: string; amountMinor: number }> {
   const res = await app.inject({
     method: "POST",
     url: "/api/transactions",
     headers: auth(token),
-    payload: input,
+    payload: {
+      type: input.type,
+      amount: input.amount,
+      accountId: input.accountId,
+      categoryId: input.categoryId,
+      date: input.date,
+      ...(input.description !== undefined ? { description: input.description } : {}),
+    },
   });
   expect(res.statusCode).toBe(201);
   return res.json() as { id: string; amountMinor: number };

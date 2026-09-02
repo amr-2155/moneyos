@@ -265,3 +265,15 @@ export type TransactionTransfer = typeof transactionTransfers.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
 export type SavingsGoal = typeof savingsGoals.$inferSelect;
 export type SavingsContribution = typeof savingsContributions.$inferSelect;
+
+/** Idempotency keys for the sync endpoint — prevents duplicate processing. */
+export const syncIdempotencyKeys = sqliteTable("sync_idempotency_keys", {
+  operationId: text("operation_id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  entity: text("entity").notNull(),
+  entityId: text("entity_id").notNull(),
+  operation: text("operation").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+});

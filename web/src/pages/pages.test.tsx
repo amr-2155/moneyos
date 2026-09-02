@@ -294,13 +294,20 @@ describe("pages", () => {
   });
 
   it("renders the home dashboard with the month status", async () => {
-    renderPage(<HomePage />);
-    expect(await screen.findByRole("heading", { name: /Hello/ })).toBeInTheDocument();
-    expect(screen.getByLabelText("Now")).toBeInTheDocument();
-    expect(screen.getByText("Your money in Aug 2026")).toBeInTheDocument();
-    expect(screen.getAllByText("500.00 EGP").length).toBeGreaterThan(0);
-    expect(screen.getByText("Emergency fund")).toBeInTheDocument();
-    expect(screen.getByText("No activity yet")).toBeInTheDocument();
+    // Freeze system time so currentMonth() is deterministic (Aug 2026).
+    // setSystemTime only mocks Date, not timers, so async UI behavior is unaffected.
+    vi.setSystemTime(new Date("2026-08-15T12:00:00Z"));
+    try {
+      renderPage(<HomePage />);
+      expect(await screen.findByRole("heading", { name: /Hello/ })).toBeInTheDocument();
+      expect(screen.getByLabelText("Now")).toBeInTheDocument();
+      expect(screen.getByText("Your money in Aug 2026")).toBeInTheDocument();
+      expect(screen.getAllByText("500.00 EGP").length).toBeGreaterThan(0);
+      expect(screen.getByText("Emergency fund")).toBeInTheDocument();
+      expect(screen.getByText("No activity yet")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows the quotes card and cycles it with the single next button", async () => {
