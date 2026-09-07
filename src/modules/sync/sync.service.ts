@@ -59,7 +59,15 @@ export class SyncService {
   async processBatch(userId: string, ops: SyncOperationInput[]): Promise<SyncOpResult[]> {
     const results: SyncOpResult[] = [];
 
-    for (const op of ops) {
+    // Process transfers before transactions so that transfer direction
+    // can be resolved when signing transaction legs.
+    const ordered = [...ops].sort((a, b) => {
+      if (a.entity === "transfer" && b.entity === "transaction") return -1;
+      if (a.entity === "transaction" && b.entity === "transfer") return 1;
+      return 0;
+    });
+
+    for (const op of ordered) {
       try {
         // 1. Idempotency check — has this operationId already been processed?
         const existing = await this.db
@@ -153,6 +161,62 @@ export class SyncService {
     return Number(v);
   }
 
+  /**
+   * Converts the frontend's unsigned amountMinor to the backend's
+   * signed convention.
+   *
+   * Backend ledger convention (src/lib/ledger.ts):
+   *   income  > 0, expense < 0, transfer from-leg < 0, to-leg > 0
+   *   reversals carry flipped signs.
+   *
+   * The frontend stores all amounts as unsigned positive values.
+   * This method applies the correct sign at the sync boundary.
+   */
+  private async signAmountForBackend(p: Record<string, unknown>): Promise<number> {
+    const unsigned = Number(p.amountMinor);
+    const txType = String(p.type);
+    const isReversal = p.reversalOfId != null;
+    const transferId = p.transferId ? String(p.transferId) : null;
+    const accountId = p.accountId ? String(p.accountId) : null;
+
+    let signed: number;
+    if (txType === "income") {
+      signed = unsigned;
+    } else if (txType === "expense") {
+      signed = -unsigned;
+    } else if (txType === "transfer") {
+      // Look up the transfer to determine this leg's direction.
+      // from-account leg = negative, to-account leg = positive.
+      if (transferId && accountId) {
+        const transfer = await this.db
+          .select({ fromAccountId: transactionTransfers.fromAccountId, toAccountId: transactionTransfers.toAccountId })
+          .from(transactionTransfers)
+          .where(eq(transactionTransfers.id, transferId))
+          .get();
+        if (transfer) {
+          if (transfer.fromAccountId === accountId) {
+            signed = -unsigned;
+          } else if (transfer.toAccountId === accountId) {
+            signed = unsigned;
+          } else {
+            signed = -unsigned;
+          }
+        } else {
+          signed = -unsigned;
+        }
+      } else {
+        signed = -unsigned;
+      }
+    } else {
+      signed = -unsigned;
+    }
+
+    if (isReversal) {
+      signed = -signed;
+    }
+    return signed;
+  }
+
   // ─── Account ──────────────────────────────────────────────────────────────
 
   private async syncAccount(userId: string, op: SyncOperationInput): Promise<void> {
@@ -225,6 +289,18 @@ export class SyncService {
     }
 
     if (op.operation === "CREATE") {
+      // Verify the account belongs to this user (IDOR prevention).
+      const accountCheck = await this.db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.id, String(p.accountId)), eq(accounts.userId, userId)))
+        .get();
+      if (!accountCheck) {
+        throw AppError.notFound("Account not found or not owned by user");
+      }
+
+      const signedAmount = await this.signAmountForBackend(p);
+
       this.db.$client
         .prepare(
           `INSERT INTO transactions (id, user_id, account_id, category_id, type, amount_minor, currency, description, notes, date, reversal_of_id, reversed_at, transfer_id, created_at, updated_at)
@@ -241,7 +317,7 @@ export class SyncService {
         .run(
           id, userId, String(p.accountId),
           p.categoryId ? String(p.categoryId) : null,
-          String(p.type), Number(p.amountMinor), String(p.currency),
+          String(p.type), signedAmount, String(p.currency),
           p.description ?? null, p.notes ?? null, String(p.date),
           p.reversalOfId ? String(p.reversalOfId) : null,
           p.reversedAt ? String(p.reversedAt) : null,
@@ -250,13 +326,14 @@ export class SyncService {
           p.updatedAt ? String(p.updatedAt) : new Date().toISOString(),
         );
     } else {
+      const signedAmount = await this.signAmountForBackend(p);
       await this.db
         .update(transactions)
         .set({
           accountId: String(p.accountId),
           categoryId: p.categoryId ? String(p.categoryId) : null,
           type: String(p.type) as Transaction["type"],
-          amountMinor: Number(p.amountMinor),
+          amountMinor: signedAmount,
           currency: String(p.currency),
           description: this.asStr(p.description),
           notes: this.asStr(p.notes),
@@ -286,6 +363,21 @@ export class SyncService {
     }
 
     if (op.operation === "CREATE") {
+      // Verify both accounts belong to this user (IDOR prevention).
+      const fromCheck = await this.db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.id, String(p.fromAccountId)), eq(accounts.userId, userId)))
+        .get();
+      const toCheck = await this.db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.id, String(p.toAccountId)), eq(accounts.userId, userId)))
+        .get();
+      if (!fromCheck || !toCheck) {
+        throw AppError.notFound("Transfer account not found or not owned by user");
+      }
+
       this.db.$client
         .prepare(
           `INSERT INTO transaction_transfers (id, user_id, from_account_id, to_account_id, amount_minor, currency, notes, from_transaction_id, to_transaction_id, reversed_at, created_at)

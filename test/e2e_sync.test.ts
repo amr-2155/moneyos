@@ -125,7 +125,7 @@ describe("Phase 9 E2E: Real Sync Pipeline", () => {
       .where(eq(transactions.id, "sync-tx-e2e-001"))
       .get();
     expect(syncedTxn).toBeDefined();
-    expect(syncedTxn!.amountMinor).toBe(50000);
+    expect(syncedTxn!.amountMinor).toBe(-50000);
     expect(syncedTxn!.type).toBe("expense");
     expect(syncedTxn!.description).toBe("Sync E2E Test Expense");
 
@@ -148,7 +148,7 @@ describe("Phase 9 E2E: Real Sync Pipeline", () => {
     const augSummary = analytics.find((m) => m.month === "2026-08");
     expect(augSummary).toBeDefined();
     expect(augSummary!.incomeMinor).toBe(100000); // 1000.00 from API-created tx
-    expect(augSummary!.expensesMinor).toBe(50000); // 500.00 from sync-created tx
+    expect(augSummary!.expensesMinor).toBe(-50000); // -500.00 from sync-created tx (signed)
   });
 
   it("TEST B: idempotency — same operationId twice creates only one record", async () => {

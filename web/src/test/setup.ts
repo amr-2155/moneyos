@@ -1,6 +1,12 @@
 import "@testing-library/jest-dom/vitest";
+import * as FakeIndexedDB from "fake-indexeddb";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
+
+// Dexie requires `indexedDB` and related APIs on `globalThis`.
+// fake-indexeddb provides these; assign them to the jsdom window.
+window.indexedDB = FakeIndexedDB.indexedDB;
+window.IDBKeyRange = FakeIndexedDB.IDBKeyRange;
 
 // Prevent real network calls during tests — the auth flow performs fetch
 // calls to the backend; in test env these must not leave the process.

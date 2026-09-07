@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, getAccessToken, setTokens, type PublicUser } from "./api";
 import { startSyncEngine } from "./sync";
-import { db } from "./db";
+import { db, type UserRecord, type AccountRecord, type CategoryRecord, type TransactionRecord, type TransferRecord, type BudgetRecord, type SavingsGoalRecord, type SavingsContributionRecord } from "./db";
 
 interface AuthContextValue {
   user: PublicUser | null;
@@ -139,14 +139,14 @@ export async function importAllData(data: Record<string, unknown>): Promise<void
     await db.savingsGoals.clear();
     await db.savingsContributions.clear();
 
-    if (Array.isArray(data.users)) await db.users.bulkPut(data.users as any[]);
-    if (Array.isArray(data.accounts)) await db.accounts.bulkPut(data.accounts as any[]);
-    if (Array.isArray(data.categories)) await db.categories.bulkPut(data.categories as any[]);
-    if (Array.isArray(data.transactions)) await db.transactions.bulkPut(data.transactions as any[]);
-    if (Array.isArray(data.transfers)) await db.transfers.bulkPut(data.transfers as any[]);
-    if (Array.isArray(data.budgets)) await db.budgets.bulkPut(data.budgets as any[]);
-    if (Array.isArray(data.savingsGoals)) await db.savingsGoals.bulkPut(data.savingsGoals as any[]);
-    if (Array.isArray(data.savingsContributions)) await db.savingsContributions.bulkPut(data.savingsContributions as any[]);
+    if (Array.isArray(data.users)) await db.users.bulkPut(data.users as UserRecord[]);
+    if (Array.isArray(data.accounts)) await db.accounts.bulkPut(data.accounts as AccountRecord[]);
+    if (Array.isArray(data.categories)) await db.categories.bulkPut(data.categories as CategoryRecord[]);
+    if (Array.isArray(data.transactions)) await db.transactions.bulkPut(data.transactions as TransactionRecord[]);
+    if (Array.isArray(data.transfers)) await db.transfers.bulkPut(data.transfers as TransferRecord[]);
+    if (Array.isArray(data.budgets)) await db.budgets.bulkPut(data.budgets as BudgetRecord[]);
+    if (Array.isArray(data.savingsGoals)) await db.savingsGoals.bulkPut(data.savingsGoals as SavingsGoalRecord[]);
+    if (Array.isArray(data.savingsContributions)) await db.savingsContributions.bulkPut(data.savingsContributions as SavingsContributionRecord[]);
   });
 }
 

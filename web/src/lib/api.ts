@@ -1,5 +1,6 @@
 import { db, CURRENT_USER_ID, uid, type UserRecord, type AccountRecord, type CategoryRecord, type TransactionRecord, type TransferRecord, type BudgetRecord, type SavingsGoalRecord, type SavingsContributionRecord } from "./db";
 import { enqueueSync, toSyncPayload, type SyncEntityType, type SyncOperationType } from "./sync";
+import { parseAmountToMinor } from "./money";
 
 const TOKEN_KEY = "moneyos.accessToken";
 const REFRESH_KEY = "moneyos.refreshToken";
@@ -420,7 +421,7 @@ export const api = {
     },
 
     create: async (body: { name: string; type: string; currency: string; openingBalance: string }): Promise<AccountView> => {
-      const openingBalanceMinor = Math.round(parseFloat(body.openingBalance || "0") * 100);
+      const openingBalanceMinor = parseAmountToMinor(body.openingBalance || "0", body.currency ?? "EGP");
       const record: AccountRecord = {
         id: uid(),
         userId: CURRENT_USER_ID,
@@ -633,7 +634,7 @@ export const api = {
       const account = await db.accounts.get(body.accountId);
       if (!account) throw new ApiError("Account not found", 404, "NOT_FOUND");
 
-      const amountMinor = Math.round(parseFloat(body.amount) * 100);
+      const amountMinor = parseAmountToMinor(body.amount, account.currency);
       const tx: TransactionRecord = {
         id: uid(),
         userId: CURRENT_USER_ID,
@@ -735,7 +736,7 @@ export const api = {
       const toAccount = await db.accounts.get(body.toAccountId);
       if (!fromAccount || !toAccount) throw new ApiError("Account not found", 404, "NOT_FOUND");
 
-      const amountMinor = Math.round(parseFloat(body.amount) * 100);
+      const amountMinor = parseAmountToMinor(body.amount, fromAccount.currency);
       const transferId = uid();
 
       const transfer: TransferRecord = {
@@ -972,7 +973,7 @@ export const api = {
     },
 
     create: async (body: { categoryId: string; amount: string; currency: string; period: string; warningThresholdPercent?: number }): Promise<BudgetView> => {
-      const amountMinor = Math.round(parseFloat(body.amount) * 100);
+      const amountMinor = parseAmountToMinor(body.amount, body.currency);
       const record: BudgetRecord = {
         id: uid(),
         userId: CURRENT_USER_ID,
@@ -1016,7 +1017,7 @@ export const api = {
       const record = await db.budgets.get(id);
       if (!record) throw new ApiError("Budget not found", 404, "NOT_FOUND");
 
-      if (typeof body.amount === "string") record.amountMinor = Math.round(parseFloat(body.amount) * 100);
+      if (typeof body.amount === "string") record.amountMinor = parseAmountToMinor(body.amount, record.currency);
       if (typeof body.warningThresholdPercent === "number") record.warningThresholdPercent = body.warningThresholdPercent;
       record.updatedAt = new Date().toISOString();
 
@@ -1150,8 +1151,8 @@ export const api = {
     },
 
     create: async (body: { name: string; targetAmount: string; currency: string; targetDate?: string | null; description?: string; currentAmount?: string }): Promise<SavingsGoalView> => {
-      const targetAmountMinor = Math.round(parseFloat(body.targetAmount) * 100);
-      const currentMinor = body.currentAmount ? Math.round(parseFloat(body.currentAmount) * 100) : 0;
+      const targetAmountMinor = parseAmountToMinor(body.targetAmount, body.currency);
+      const currentMinor = body.currentAmount ? parseAmountToMinor(body.currentAmount, body.currency) : 0;
       const now = new Date().toISOString();
       const record: SavingsGoalRecord = {
         id: uid(),
@@ -1196,7 +1197,7 @@ export const api = {
       if (!record) throw new ApiError("Savings goal not found", 404, "NOT_FOUND");
 
       if (typeof body.name === "string") record.name = body.name;
-      if (typeof body.targetAmount === "string") record.targetAmountMinor = Math.round(parseFloat(body.targetAmount) * 100);
+      if (typeof body.targetAmount === "string") record.targetAmountMinor = parseAmountToMinor(body.targetAmount, record.currency);
       if (typeof body.targetDate === "string" || body.targetDate === null) record.targetDate = body.targetDate as string | null;
       if (typeof body.description === "string" || body.description === null) record.description = body.description as string | null;
       record.updatedAt = new Date().toISOString();
@@ -1284,7 +1285,7 @@ export const api = {
         const goal = await db.savingsGoals.get(goalId);
         if (!goal) throw new ApiError("Savings goal not found", 404, "NOT_FOUND");
 
-        const amountMinor = Math.round(parseFloat(body.amount) * 100);
+        const amountMinor = parseAmountToMinor(body.amount, goal.currency);
 
         const contribution: SavingsContributionRecord = {
           id: uid(),
