@@ -1,9 +1,10 @@
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyReply } from "fastify";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from "node:fs";
 import type { AppConfig } from "./config/env.js";
 import type { Db } from "./db/client.js";
 import { createAuthenticate } from "./lib/auth/authenticate.js";
@@ -32,6 +33,27 @@ import { registerSyncRoutes } from "./modules/sync/sync.routes.js";
 import { SyncService } from "./modules/sync/sync.service.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.resolve(__dirname, "../web/dist");
+
+// MIME types for common files
+const mimeTypes: Record<string, string> = {
+  ".html": "text/html",
+  ".css": "text/css",
+  ".js": "application/javascript",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".ico": "image/x-icon",
+  ".webp": "image/webp",
+  ".apk": "application/vnd.android.package-archive",
+  ".txt": "text/plain",
+};
+
+function getContentType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  return mimeTypes[ext] || "application/octet-stream";
+}
 
 export interface BuildAppOptions {
   config: AppConfig;
@@ -54,13 +76,6 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     errorResponseBuilder: () => ({
       error: { code: "RATE_LIMITED", message: "Too many requests, please try again later" },
     }),
-  });
-
-  const distPath = path.resolve(__dirname, "../web/dist");
-  await app.register(import("@fastify/static"), {
-    root: distPath,
-    prefix: "/",
-    decorateReply: false,
   });
 
   registerErrorHandler(app);
@@ -95,6 +110,85 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     },
     { prefix: "/api" },
   );
+
+  // Helper to serve static files
+  async function serveFile(request: FastifyRequest, reply: FastifyReply, filePath: string) {
+    try {
+      const content = await fs.promises.readFile(path.join(distPath, filePath));
+      reply.type(getContentType(filePath)).send(content);
+    } catch (e) {
+      reply.code(404).send({ error: "File not found" });
+    }
+  }
+
+  // Root - landing page
+  app.get("/", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "index.html");
+  });
+
+  // SPA fallback for /app/* routes
+  app.get("/app", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "app.html");
+  });
+  app.get("/app/*", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "app.html");
+  });
+
+  // Static files
+  app.get("/favicon.ico", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "favicon.ico");
+  });
+  app.get("/favicon.svg", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "favicon.svg");
+  });
+  app.get("/favicon-16.png", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "favicon-16.png");
+  });
+  app.get("/favicon-32.png", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "favicon-32.png");
+  });
+  app.get("/apple-touch-icon.png", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "apple-touch-icon.png");
+  });
+  app.get("/maskable-512.png", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "maskable-512.png");
+  });
+  app.get("/icon-192.png", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "icon-192.png");
+  });
+  app.get("/icon-512.png", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "icon-512.png");
+  });
+  app.get("/manifest.json", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "manifest.json");
+  });
+  app.get("/sw.js", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "sw.js");
+  });
+  app.get("/assets/*", async (request: FastifyRequest, reply: FastifyReply) => {
+      return serveFile(request, reply, request.url.slice(1));
+    });
+
+  // Success page for post-submission redirects - auto-redirect to app
+  app.get("/success", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "success.html");
+  });
+  app.post("/success", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "success.html");
+  });
+
+  // SPA fallback: deep links into the app (e.g. /reports after refresh)
+  // land on app.html; unknown API/file paths stay 404.
+  app.setNotFoundHandler((request, reply) => {
+    const url = request.url.split("?")[0] ?? "";
+    if (url.startsWith("/api/")) {
+      return reply.code(404).send({ error: { code: "NOT_FOUND", message: "Not found" } });
+    }
+    if (url.startsWith("/assets/") || /\.[a-z0-9]+$/i.test(url)) {
+      return reply.code(404).send({ error: "File not found" });
+    }
+    return serveFile(request, reply, "app.html");
+  });
 
   return app;
 }

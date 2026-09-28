@@ -1,0 +1,13 @@
+node_modules
+dist
+web/dist
+web/node_modules
+web/android
+data
+.env
+git
+.gitignore
+*.log
+coverage
+.vscode
+.idea

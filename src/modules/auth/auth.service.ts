@@ -205,6 +205,8 @@ export class AuthService {
         resetUrl,
         "",
         "If you did not request this, you can safely ignore this email.",
+        "",
+        "MoneyOS is free forever, for the sake of God — مجاني تمامًا لوجه الله.",
       ].join("\n"),
     });
 

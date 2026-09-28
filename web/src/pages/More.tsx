@@ -11,8 +11,6 @@ interface MoreItem {
 
 const TOOLS: MoreItem[] = [
   { to: "/transactions", label: "nav.transactions", icon: "list" },
-  { to: "/accounts", label: "nav.accounts", icon: "wallet" },
-  { to: "/transfers", label: "nav.transfers", icon: "swap" },
   { to: "/budgets", label: "nav.budgets", icon: "target" },
   { to: "/categories", label: "nav.categories", icon: "tag" },
 ];

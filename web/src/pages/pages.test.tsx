@@ -310,15 +310,15 @@ describe("pages", () => {
     }
   });
 
-  it("shows the quotes card and cycles it with the single next button", async () => {
+  it("shows the home floating action button instead of the quotes card", async () => {
     renderPage(<HomePage />);
-    const card = await screen.findByLabelText("A word of wisdom");
-    expect(card).toBeInTheDocument();
-    expect(screen.queryByLabelText("Previous")).not.toBeInTheDocument();
-    const quoteText = () => card.querySelector("blockquote")!.textContent!;
-    const before = quoteText();
-    fireEvent.click(screen.getByLabelText("Next"));
-    await waitFor(() => expect(quoteText()).not.toBe(before));
+    const links = await screen.findAllByRole("link", { name: "Add transaction" });
+    const fab = links.find((link) => link.classList.contains("home-fab"));
+    if (!fab) {
+      throw new Error("Home floating action button not found");
+    }
+    expect(fab).toHaveAttribute("href", "/add");
+    expect(screen.queryByLabelText("A word of wisdom")).not.toBeInTheDocument();
   });
 
   it("renders the add page: type switch, big amount and category picker", async () => {
@@ -418,11 +418,14 @@ describe("pages", () => {
     expect(screen.getByRole("button", { name: /Export backup/ })).toBeInTheDocument();
   });
 
-  it("renders the more page with links to secondary tools", async () => {
+  it("renders the more page with the simplified tools list", async () => {
     renderPage(<MorePage />);
     expect(await screen.findByRole("heading", { name: "More" })).toBeInTheDocument();
     expect(screen.getByText("Transactions")).toBeInTheDocument();
-    expect(screen.getByText("Accounts")).toBeInTheDocument();
+    expect(screen.getByText("Budgets")).toBeInTheDocument();
+    expect(screen.getByText("Categories")).toBeInTheDocument();
+    expect(screen.queryByText("Accounts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Transfers")).not.toBeInTheDocument();
     expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
   });
 

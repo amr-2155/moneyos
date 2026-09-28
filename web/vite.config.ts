@@ -1,5 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
+import { resolve } from "node:path";
 
 export default defineConfig({
   plugins: [react()],
@@ -10,6 +11,17 @@ export default defineConfig({
         target: "http://localhost:3001",
         changeOrigin: true,
         secure: false,
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      // Multi-page: landing (/) + app (/app) + success (/success).
+      // Output names match what the backend serves from web/dist.
+      input: {
+        index: resolve(__dirname, "index.html"),
+        app: resolve(__dirname, "app.html"),
+        success: resolve(__dirname, "success.html"),
       },
     },
   },

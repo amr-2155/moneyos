@@ -13,6 +13,8 @@ export function registerHealthRoutes(
       uptimeSeconds: Math.round(process.uptime()),
       timestamp: new Date().toISOString(),
       database: dbOk ? "ok" : "error",
+      free: true,
+      message: "MoneyOS is free for everyone — مجاني تمامًا لوجه الله",
     };
   });
 }

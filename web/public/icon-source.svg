@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1B33"/>
+      <stop offset="0.55" stop-color="#10233F"/>
+      <stop offset="1" stop-color="#1B3A5F"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.28" r="0.65">
+      <stop offset="0" stop-color="#10B981" stop-opacity="0.38"/>
+      <stop offset="0.55" stop-color="#10B981" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#10B981" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mgrad" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="0.55" stop-color="#22D3EE"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="coin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="0.5" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="coinin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#B45309"/>
+      <stop offset="1" stop-color="#92400E"/>
+    </linearGradient>
+    <pattern id="grid" width="96" height="96" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <path d="M96 0H0V96" fill="none" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="2"/>
+    </pattern>
+    <clipPath id="round">
+      <rect x="0" y="0" width="1024" height="1024" rx="232"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+   <g id="bg-layer">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <rect width="1024" height="1024" fill="url(#grid)"/>
+    <rect width="1024" height="1024" fill="url(#glow)"/>
+    <!-- top highlight -->
+    <ellipse cx="512" cy="40" rx="520" ry="170" fill="#FFFFFF" opacity="0.06"/>
+   </g>
+   <g id="mark">
+
+    <!-- Growth bars behind M -->
+    <g opacity="0.20">
+      <rect x="276" y="600" width="64" height="150" rx="20" fill="#38BDF8"/>
+      <rect x="368" y="540" width="64" height="210" rx="20" fill="#22D3EE"/>
+      <rect x="592" y="540" width="64" height="210" rx="20" fill="#22D3EE"/>
+      <rect x="684" y="600" width="64" height="150" rx="20" fill="#34D399"/>
+    </g>
+
+    <!-- M monogram -->
+    <path d="M292 724 V430 L512 610 L732 430 V724"
+          fill="none" stroke="url(#mgrad)" stroke-width="118"
+          stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Gold coin (growth node) -->
+    <circle cx="732" cy="318" r="118" fill="url(#coin)"/>
+    <circle cx="732" cy="318" r="118" fill="none" stroke="#FFF7ED" stroke-opacity="0.55" stroke-width="10"/>
+    <circle cx="732" cy="318" r="88" fill="none" stroke="url(#coinin)" stroke-opacity="0.6" stroke-width="8"/>
+    <text x="732" y="360" text-anchor="middle"
+          font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="118"
+          fill="#78350F">£</text>
+   </g>
+  </g>
+</svg>

@@ -4,10 +4,11 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
-  HOST: z.string().default("127.0.0.1"),
+  HOST: z.string().default("0.0.0.0"),
   CORS_ORIGIN: z.string().default(""),
   DATABASE_URL: z.string().default("./data/moneyos.db"),
   JWT_SECRET: z.string().min(32).optional(),
+  ALLOW_EPHEMERAL_SECRET: z.enum(["true", "false"]).default("false"),
   JWT_EXPIRES_IN: z.string().default("15m"),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().positive().default(30),
@@ -54,12 +55,18 @@ export function loadConfig(raw: NodeJS.ProcessEnv = process.env): AppConfig {
   let jwtSecret = parsed.JWT_SECRET;
   if (!jwtSecret) {
     if (parsed.NODE_ENV === "production") {
-      throw new Error(
-        "JWT_SECRET is required in production. Set it to a random value of at least 32 characters.",
+      if (parsed.ALLOW_EPHEMERAL_SECRET !== "true") {
+        throw new Error(
+          "JWT_SECRET is required in production. Set it to a random value of at least 32 characters, or pass ALLOW_EPHEMERAL_SECRET=true for ephemeral sessions.",
+        );
+      }
+      console.warn(
+        "[moneyos] JWT_SECRET not set but ALLOW_EPHEMERAL_SECRET=true; generating an ephemeral secret (sessions reset on restart).",
       );
+    } else {
+      console.warn("[moneyos] JWT_SECRET not set; generated an ephemeral secret for development.");
     }
     jwtSecret = randomBytes(48).toString("base64url");
-    console.warn("[moneyos] JWT_SECRET not set; generated an ephemeral secret for development.");
   }
 
   const refreshTtlDays = sessionTtlDays.parse(parsed.REFRESH_TOKEN_TTL_DAYS);
