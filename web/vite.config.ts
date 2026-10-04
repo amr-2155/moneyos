@@ -3,6 +3,9 @@ import { defineConfig } from "vitest/config";
 import { resolve } from "node:path";
 
 export default defineConfig({
+  // GitHub Pages serves the site under /<repo>/, so the Pages build sets
+  // PAGES_BASE=/moneyos/. Local dev and the backend keep the default "/".
+  base: process.env.PAGES_BASE ?? "/",
   plugins: [react()],
   server: {
     port: 5173,

@@ -10,7 +10,7 @@
 <meta property="og:title" content="MoneyOS — نظام تشغيل أموالك" />
 <meta property="og:description" content="سجّل مصروفك في 7 ثوانٍ. ميزانيات ذكية، أهداف ادخار، صافي الثروة — كل أموالك في مكان واحد." />
 <meta property="og:type" content="website" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap" />
@@ -435,7 +435,7 @@ section[id]{scroll-margin-top:5rem}
       <div class="hero-actions reveal">
         <a href="#lead" class="btn btn-primary" style="padding:.9rem 2rem;font-size:1.02rem">ابدأ مجانًا — بدون بطاقة</a>
         <a href="#platform" class="btn btn-ghost">شاهد كيف يعمل</a>
-        <a href="/assets/moneyos.apk" download class="btn btn-light" style="padding:.9rem 2rem">تحميل تطبيق أندرويد</a>
+        <a href="assets/moneyos.apk" download class="btn btn-light" style="padding:.9rem 2rem">تحميل تطبيق أندرويد</a>
       </div>
       <div class="hero-stats reveal">
         <div><div class="hero-stat-num" data-count="7">7 ثوانٍ</div><div class="hero-stat-label">لتسجيل معاملة</div></div>
@@ -562,7 +562,7 @@ section[id]{scroll-margin-top:5rem}
     <h2 class="sec-title reveal">مجاني 100% — لوجه الله 🤍</h2>
     <p class="sec-sub reveal">لا اشتراكات، لا بطاقات، لا نسخة مدفوعة. كل المميزات لكل الناس — للأبد.</p>
     <div class="price-grid" style="grid-template-columns:minmax(0,26rem);justify-content:center">
-      <div class="card price featured reveal"><span class="tag" style="background:var(--primary);color:#fff;border:none">مجاني للأبد 🤍</span><h3 style="margin-top:.6rem">كل المميزات</h3><div class="amount">0 ج.م</div><p>لوجه الله — بدون مقابل وبدون حدود.</p><ul class="checks"><li>حسابات ومعاملات غير محدودة</li><li>ميزانيات شهرية + أهداف ادخار</li><li>لوحة تحكم وتقارير وتحليلات كاملة</li><li>تصدير CSV لبياناتك</li><li>عربي وإنجليزي · فاتح وداكن · جوال وكمبيوتر</li></ul><br /><a href="#lead" class="btn btn-primary" style="width:100%">أنشئ حسابك المجاني</a><a href="/assets/moneyos.apk" download class="btn btn-outline" style="width:100%;margin-top:.65rem">تحميل تطبيق أندرويد 📲</a></div>
+      <div class="card price featured reveal"><span class="tag" style="background:var(--primary);color:#fff;border:none">مجاني للأبد 🤍</span><h3 style="margin-top:.6rem">كل المميزات</h3><div class="amount">0 ج.م</div><p>لوجه الله — بدون مقابل وبدون حدود.</p><ul class="checks"><li>حسابات ومعاملات غير محدودة</li><li>ميزانيات شهرية + أهداف ادخار</li><li>لوحة تحكم وتقارير وتحليلات كاملة</li><li>تصدير CSV لبياناتك</li><li>عربي وإنجليزي · فاتح وداكن · جوال وكمبيوتر</li></ul><br /><a href="#lead" class="btn btn-primary" style="width:100%">أنشئ حسابك المجاني</a><a href="assets/moneyos.apk" download class="btn btn-outline" style="width:100%;margin-top:.65rem">تحميل تطبيق أندرويد 📲</a></div>
     </div>
     <div class="calc reveal">
       <div>
@@ -653,36 +653,8 @@ section[id]{scroll-margin-top:5rem}
           if (!email || !password) { showError("اكتب البريد الإلكتروني وكلمة المرور."); return; }
           if (mode === "signup" && !name) { showError("اكتب اسمك عشان نرحب بيك صح."); return; }
           if (mode === "signup" && password.length < 8) { showError("كلمة المرور لازم 8 أحرف على الأقل."); return; }
-          submitBtn.disabled = true;
-          submitBtn.textContent = "ثواني... ⏳";
-          try {
-            var body = mode === "signup" ? { name: name, email: email, password: password } : { email: email, password: password };
-            var res = await fetch("/api/auth/" + mode, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body)
-            });
-            var data = await res.json().catch(function(){ return {}; });
-            if (!res.ok) {
-              var msg = (data && data.error && data.error.message) || "حصل خطأ — حاول تاني.";
-              if (res.status === 409) msg = "البريد ده مسجل بالفعل — سجّل الدخول بدل التسجيل.";
-              if (res.status === 401) msg = "بيانات الدخول غير صحيحة — اتأكد وحاول تاني.";
-              if (res.status === 429) msg = "محاولات كتير — استنى دقيقة وحاول تاني.";
-              showError(msg);
-              submitBtn.disabled = false;
-              submitBtn.textContent = mode === "signup" ? "أنشئ حسابك وادخل التطبيق 🚀" : "ادخل التطبيق 🚀";
-              return;
-            }
-            if (data && data.tokens) {
-              localStorage.setItem("moneyos.accessToken", data.tokens.accessToken);
-              localStorage.setItem("moneyos.refreshToken", data.tokens.refreshToken);
-            }
-            window.location.href = "/app";
-          } catch (err) {
-            showError("مش قادر أوصل للسيرفر — اتأكد من الاتصال وحاول تاني.");
-            submitBtn.disabled = false;
-            submitBtn.textContent = mode === "signup" ? "أنشئ حسابك وادخل التطبيق 🚀" : "ادخل التطبيق 🚀";
-          }
+          // Static hosting (GitHub Pages) has no backend: explain instead of calling /api.
+          showError("التسجيل من نسخة الموقع الثابتة غير متاح حاليًا — حمّل تطبيق أندرويد من الأعلى، فهو مجاني أيضًا.");
         });
       })();
       </script>
