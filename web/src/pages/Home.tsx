@@ -11,7 +11,6 @@ import { useErrorMessage } from "../lib/errors";
 import { contributionsInMonth, goalKind, loadDistribution, monthlyTargets, type Distribution } from "../lib/distribution";
 import { localizeCategoryName } from "../lib/categoryNames";
 import { PlanEditorModal } from "../components/PlanEditor";
-import { QuoteCard } from "../components/QuoteCard";
 
 type Insight = { tone: "success" | "warning" | "neutral"; text: string } | null;
 
@@ -245,8 +244,6 @@ export function HomePage() {
         </div>
       ) : null}
 
-      <QuoteCard />
-
       <section className="card" aria-label={t("home.yourPlan")}>
         <div className="card-header">
           <h2>{t("home.yourPlan")}</h2>
@@ -355,7 +352,7 @@ export function HomePage() {
           </EmptyState>
         ) : (
           <ul className="list">
-            {dashboard.recentTransactions.slice(0, 6).map((tx) => (
+            {dashboard.recentTransactions.slice(0, 4).map((tx) => (
               <TransactionItem key={tx.id} tx={tx} subtitle={categoryName(tx) || undefined} />
             ))}
           </ul>
@@ -394,6 +391,10 @@ export function HomePage() {
           </ul>
         )}
       </section>
+
+      <Link to="/add" className="fab home-fab" aria-label={t("actions.addTransaction")}>
+        <Icon name="plus" size={24} />
+      </Link>
 
       <PlanEditorModal
         open={planOpen}
