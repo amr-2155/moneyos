@@ -23,18 +23,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+
       - name: Install web dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
         working-directory: web
+
       - name: Build landing (Pages base path)
         run: PAGES_BASE=/moneyos/ npm run build
         working-directory: web
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
