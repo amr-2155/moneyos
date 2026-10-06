@@ -1,0 +1,17 @@
+# Render Blueprint — MoneyOS full-stack (Fastify API + React SPA, same origin).
+# Free plan ($0, no credit card): sleeps after 15 min idle (~1 min wake-up),
+# ephemeral filesystem (SQLite resets on restart/redeploy — export CSV regularly).
+services:
+  - type: web
+    name: moneyos
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEFAULT_CURRENCY
+        value: EGP
+      - key: JWT_SECRET
+        generateValue: true
