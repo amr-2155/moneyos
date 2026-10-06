@@ -278,7 +278,7 @@ section{padding:4.5rem 0}
 .calc-out{background:var(--navy);color:#fff;border-radius:14px;padding:1.2rem;text-align:center}
 /* Gallery */
 .gal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:2rem}
-.mock{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);translate:0 0;animation:mockFloat 6s ease-in-out infinite}
+.mock{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);translate:0 0;animation:mockFloat 6s ease-in-out infinite;user-select:none}
 @keyframes mockFloat{0%,100%{translate:0 0}50%{translate:0 -8px}}
 .mock-bar{display:flex;gap:6px;padding:.7rem .9rem;border-bottom:1px solid var(--border)}
 .mock-bar i{width:10px;height:10px;border-radius:50%;background:#e2e8f0}
@@ -584,7 +584,7 @@ section[id]{scroll-margin-top:5rem}
     <span class="eyebrow reveal">جولة في التطبيق</span>
     <h2 class="sec-title reveal">شاشات مصممة للسرعة والوضوح</h2>
     <div class="gal-grid">
-      <div class="mock reveal"><div class="mock-bar"><i></i><i></i><i></i></div><div class="mock-body"><b>🏠 الرئيسية</b><p style="color:var(--muted);font-size:.85rem">المتبقي، الدخل والمصروف، خطتك، وآخر المعاملات — كل شيء في شاشة واحدة.</p><div class="mrow" style="margin-top:.8rem"><span class="mdot" style="background:#2563eb">+</span><span style="font-size:.8rem">إضافة دخل / مصروف</span></div></div></div>
+      <div class="mock reveal"><div class="mock-bar"><i></i><i></i><i></i></div><div class="mock-body"><b>🏠 الرئيسية</b><p style="color:var(--muted);font-size:.85rem">المتبقي، الدخل والمصروف، خطتك، وآخر المعاملات — كل شيء في شاشة واحدة.</p><div class="mrow" style="margin-top:.8rem;background:#2563eb;border-color:#1d4ed8;color:#fff"><span class="mdot" style="background:rgba(255,255,255,.22)">+</span><span style="font-size:.8rem">إضافة دخل / مصروف</span></div></div></div>
       <div class="mock reveal"><div class="mock-bar"><i></i><i></i><i></i></div><div class="mock-body"><b>📊 التقارير</b><p style="color:var(--muted);font-size:.85rem">اتجاه 6 أشهر + تفصيل التصنيفات بالنسب والمبالغ.</p><div class="bar-row"><b style="height:50%"></b><b class="e" style="height:35%"></b><b style="height:70%"></b><b class="e" style="height:45%"></b><b style="height:85%"></b><b class="e" style="height:40%"></b></div></div></div>
       <div class="mock reveal"><div class="mock-bar"><i></i><i></i><i></i></div><div class="mock-body"><b>🎯 الأهداف</b><p style="color:var(--muted);font-size:.85rem">تقدم كل هدف والمتبقي والموعد المتوقع — بتحديث لحظي.</p><div style="margin-top:.8rem;font-size:.85rem">عمرة — 68%</div><div class="progress"><i style="width:68%"></i></div><div style="margin-top:.6rem;font-size:.85rem">طوارئ — 35%</div><div class="progress"><i style="width:35%"></i></div></div></div>
     </div>
