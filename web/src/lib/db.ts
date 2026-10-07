@@ -1,4 +1,5 @@
 import Dexie, { type Table } from "dexie";
+import { currentUserId } from "./session";
 
 export interface UserRecord {
   id: string;
@@ -156,4 +157,9 @@ export function uid(): string {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-export const CURRENT_USER_ID = "local-user";
+/**
+ * Ownership key for local records: the id of the user signed in on this
+ * device. Two accounts on the same device never see each other's data.
+ */
+export { currentUserId };
+

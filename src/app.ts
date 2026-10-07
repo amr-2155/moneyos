@@ -111,13 +111,23 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     { prefix: "/api" },
   );
 
-  // Helper to serve static files
+  // Helper to serve static files from web/dist.
+  // Defence-in-depth: resolves the request against distPath and refuses to
+  // serve anything that escapes it (traversal, absolute paths, Windows
+  // drive-relative paths), even though the router already normalises `..`.
   async function serveFile(request: FastifyRequest, reply: FastifyReply, filePath: string) {
+    const relative = filePath.replace(/^[/\\]+/, "");
+    const resolved = path.resolve(distPath, relative);
+    const insideDist = resolved === distPath || resolved.startsWith(distPath + path.sep);
+    if (!insideDist || relative.includes("\0")) {
+      reply.code(404).send({ error: { code: "NOT_FOUND", message: "File not found" } });
+      return;
+    }
     try {
-      const content = await fs.promises.readFile(path.join(distPath, filePath));
-      reply.type(getContentType(filePath)).send(content);
-    } catch (e) {
-      reply.code(404).send({ error: "File not found" });
+      const content = await fs.promises.readFile(resolved);
+      reply.type(getContentType(resolved)).send(content);
+    } catch {
+      reply.code(404).send({ error: { code: "NOT_FOUND", message: "File not found" } });
     }
   }
 
@@ -128,6 +138,11 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
 
   // SPA fallback for /app/* routes
   app.get("/app", async (request: FastifyRequest, reply: FastifyReply) => {
+    return serveFile(request, reply, "app.html");
+  });
+  // Alias so the static landing page's relative `app.html` link also works
+  // when it is served by this server (GitHub Pages serves it as a real file).
+  app.get("/app.html", async (request: FastifyRequest, reply: FastifyReply) => {
     return serveFile(request, reply, "app.html");
   });
   app.get("/app/*", async (request: FastifyRequest, reply: FastifyReply) => {

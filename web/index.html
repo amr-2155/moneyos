@@ -418,6 +418,7 @@ section[id]{scroll-margin-top:5rem}
     </div>
     <div class="nav-cta">
       <button class="theme-btn" id="themeBtn" aria-label="تبديل الوضع الفاتح/الليلي">🌙</button>
+      <a href="app.html" class="btn btn-ghost" style="padding:.55rem 1.1rem">تسجيل الدخول</a>
       <a href="#lead" class="btn btn-primary" style="padding:.55rem 1.2rem">ابدأ مجانًا</a>
       <button class="mobile-toggle" id="menuBtn" aria-label="القائمة"><span></span><span></span><span></span></button>
     </div>
@@ -646,14 +647,64 @@ section[id]{scroll-margin-top:5rem}
         form.addEventListener("submit", async function(e){
           e.preventDefault();
           hideError();
-          var email = emailInput.value.trim();
+          var email = emailInput.value.trim().toLowerCase();
           var password = passInput.value;
           var name = nameInput.value.trim();
           if (!email || !password) { showError("اكتب البريد الإلكتروني وكلمة المرور."); return; }
           if (mode === "signup" && !name) { showError("اكتب اسمك عشان نرحب بيك صح."); return; }
           if (mode === "signup" && password.length < 8) { showError("كلمة المرور لازم 8 أحرف على الأقل."); return; }
-          // Static hosting (GitHub Pages) has no backend: explain instead of calling /api.
-          showError("التسجيل من نسخة الموقع الثابتة غير متاح حاليًا — حمّل تطبيق أندرويد من الأعلى، فهو مجاني أيضًا.");
+
+          var original = submitBtn.textContent;
+          submitBtn.disabled = true;
+          submitBtn.textContent = mode === "signup" ? "جارٍ إنشاء الحساب…" : "جارٍ تسجيل الدخول…";
+
+          try {
+            var res = await fetch("/api/auth/" + (mode === "signup" ? "signup" : "login"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(mode === "signup"
+                ? { name: name, email: email, password: password }
+                : { email: email, password: password })
+            });
+
+            if (res.ok) {
+              var data = await res.json();
+              if (data && data.user && data.tokens) {
+                try {
+                  localStorage.setItem("moneyos.accessToken", data.tokens.accessToken);
+                  localStorage.setItem("moneyos.refreshToken", data.tokens.refreshToken);
+                  localStorage.setItem("moneyos.session", JSON.stringify({
+                    id: data.user.id,
+                    email: data.user.email,
+                    name: data.user.name,
+                    defaultCurrency: data.user.defaultCurrency,
+                    locale: data.user.locale,
+                    createdAt: data.user.createdAt,
+                    offline: false
+                  }));
+                } catch (storageError) { /* private mode — the app will ask again */ }
+              }
+              window.location.href = "app.html";
+              return;
+            }
+
+            if (res.status === 409) {
+              showError("يوجد حساب بهذا البريد الإلكتروني بالفعل — جرّب «سجّل الدخول» بالأسفل.");
+            } else if (res.status === 401 || res.status === 400) {
+              showError("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
+            } else if (res.status === 429) {
+              showError("محاولات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.");
+            } else if (res.status === 404) {
+              showError("هذه نسخة عرض ثابتة بلا خادم — نزّل تطبيق أندرويد المجاني من الأعلى، أو شغّل MoneyOS على جهازك ثم افتح /app.");
+            } else {
+              showError("تعذّر إتمام العملية. تحقق من البيانات وحاول مرة أخرى.");
+            }
+          } catch (networkError) {
+            showError("لا يمكن الوصول إلى الخادم الآن. نزّل تطبيق أندرويد المجاني من الأعلى، أو تحقق من اتصالك وحاول مرة أخرى.");
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = original;
+          }
         });
       })();
       </script>
@@ -731,6 +782,7 @@ section[id]{scroll-margin-top:5rem}
       <p style="color:#dbeafe;margin:.8rem auto 1.6rem;max-width:32rem;position:relative;z-index:1">انضم لآلاف ينظمون رواتبهم وادخارهم بـ MoneyOS. بدون بطاقة — وبياناتك ملكك وتحذف بضغطة.</p>
       <div style="display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
         <a href="#lead" class="btn btn-light" style="padding:.9rem 2.2rem">افتح حسابك المجاني</a>
+        <a href="app.html" class="btn btn-ghost" style="padding:.9rem 2rem;color:#fff;border-color:rgba(255,255,255,.35)">تسجيل الدخول</a>
       </div>
     </div>
     <div class="contact-grid" id="contact">

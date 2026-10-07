@@ -17,13 +17,12 @@
  */
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createTestApp, type TestContext } from "./helpers.js";
 import {
   auth,
   createAccount,
   createCategory,
-  createTransaction,
   signupUser,
 } from "./financial.helpers.js";
 import { SyncService, type SyncOperationInput } from "../src/modules/sync/sync.service.js";
@@ -31,9 +30,8 @@ import { AccountService } from "../src/modules/accounts/accounts.service.js";
 import { CategoryService } from "../src/modules/categories/categories.service.js";
 import { BudgetService } from "../src/modules/budgets/budgets.service.js";
 import { SavingsGoalService } from "../src/modules/savings/savings-goals.service.js";
-import { transactions, transactionTransfers } from "../src/db/schema.js";
+import { transactions } from "../src/db/schema.js";
 import { computeAccountBalances, computeAccountBalance } from "../src/lib/ledger.js";
-import { formatMinorToAmount } from "../src/lib/money.js";
 
 function makeSyncService(ctx: TestContext): SyncService {
   return new SyncService(
@@ -586,7 +584,7 @@ describe("Phase 9.1: Financial Sync Invariants", () => {
   /* ── 9. Cross-user ownership ────────────────────────────── */
   it("user A cannot mutate user B's financial records via sync", async () => {
     const { accessToken: tokenA, userId: userA } = await signupUser(app, "inv-userA@example.com");
-    const { accessToken: tokenB, userId: userB } = await signupUser(app, "inv-userB@example.com");
+    const { accessToken: tokenB } = await signupUser(app, "inv-userB@example.com");
 
     const accountA = await createAccount(app, tokenA, { name: "UserA Account", currency: "EGP", openingBalance: "0" });
     const accountB = await createAccount(app, tokenB, { name: "UserB Account", currency: "EGP", openingBalance: "0" });

@@ -1,9 +1,10 @@
-﻿import { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { CURRENCIES } from "../lib/format";
 import { useAuth, exportAllData, importAllData, exportCSV, deleteAllData } from "../lib/auth";
 import { useI18n } from "../i18n";
 import { Button, Field, Input, PageHeader, Select } from "../components/ui";
 import { LanguageSelector, ThemeSelector } from "../components/ui";
+import { Icon } from "../components/Icon";
 import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
 import { loadDistribution, spendingPct } from "../lib/distribution";
@@ -12,7 +13,7 @@ import { PlanEditorModal } from "../components/PlanEditor";
 const APP_VERSION = "2.0.0";
 
 export function SettingsPage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, signOut, offline } = useAuth();
   const { t } = useI18n();
   const getError = useErrorMessage();
   const { show } = useToast();
@@ -22,9 +23,26 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [signOutConfirm, setSignOutConfirm] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const distribution = loadDistribution();
+
+  async function onSignOut() {
+    if (!signOutConfirm) {
+      setSignOutConfirm(true);
+      return;
+    }
+    setSigningOut(true);
+    try {
+      await signOut();
+      show("success", t("auth.signedOut"));
+    } catch (err) {
+      show("error", getError(err, "errors.generic"));
+      setSigningOut(false);
+    }
+  }
 
   async function onSaveProfile(event: React.FormEvent) {
     event.preventDefault();
@@ -111,6 +129,44 @@ export function SettingsPage() {
 
       <section className="list-group" aria-label={t("settings.account")}>
         <h2 className="list-group-title">{t("settings.account")}</h2>
+        <div className="list-group-card">
+          <div className="list-row">
+            <span className="list-row-icon">
+              <Icon name="wallet" />
+            </span>
+            <span className="list-row-main">
+              <strong>{user?.name ?? ""}</strong>
+              <span className="list-row-sub" dir="ltr">
+                {t("settings.signedInAs", { email: user?.email ?? "" })}
+              </span>
+            </span>
+          </div>
+          {offline ? (
+            <div className="list-row">
+              <span className="list-row-icon">
+                <Icon name="info" />
+              </span>
+              <span className="list-row-main">
+                <span className="list-row-sub">{t("auth.offlineNotice")}</span>
+              </span>
+            </div>
+          ) : null}
+          <button type="button" className="list-row danger" onClick={() => void onSignOut()} disabled={signingOut}>
+            <span className="list-row-icon">
+              <Icon name="logout" />
+            </span>
+            <span className="list-row-main">
+              <strong>{t("settings.signOut")}</strong>
+              <span className="list-row-sub">
+                {signOutConfirm ? t("auth.signOutConfirm") : t("settings.accountHint")}
+              </span>
+            </span>
+          </button>
+        </div>
+      </section>
+
+      <section className="list-group" aria-label={t("settings.profile")}>
+        <h2 className="list-group-title">{t("settings.profile")}</h2>
         <div className="list-group-card">
           <form onSubmit={(e) => void onSaveProfile(e)}>
             <Field label={t("settings.name")}>
