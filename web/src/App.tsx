@@ -3,6 +3,7 @@ import { AppShell } from "./components/AppShell";
 import { useAuth } from "./lib/auth";
 import { AccountsPage } from "./pages/Accounts";
 import { AddPage } from "./pages/Add";
+import { AuthPage } from "./pages/Auth";
 import { BudgetsPage } from "./pages/Budgets";
 import { CategoriesPage } from "./pages/Categories";
 import { HomePage } from "./pages/Home";
@@ -14,14 +15,40 @@ import { TransactionsPage } from "./pages/Transactions";
 import { TransfersPage } from "./pages/Transfers";
 
 function LoadingScreen() {
-  return <div className="loading-screen">MoneyOS</div>;
+  return (
+    <div className="loading-screen">
+      <span className="loading-brand">
+        <span className="brand-mark" />
+        MoneyOS
+      </span>
+      <span className="loading-bar" aria-hidden />
+    </div>
+  );
+}
+
+/** Sign-in / sign-up / password-reset entry point (no app chrome). */
+function AuthRoutes() {
+  return (
+    <Routes>
+      <Route path="/signup" element={<AuthPage mode="signup" />} />
+      <Route path="/forgot-password" element={<AuthPage mode="forgot" />} />
+      <Route path="/reset-password" element={<AuthPage mode="reset" />} />
+      <Route path="*" element={<AuthPage mode="login" />} />
+    </Routes>
+  );
 }
 
 export function App() {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
+  }
+
+  // Nothing on this device is usable without a signed-in user: MoneyOS keeps
+  // every financial record scoped to the account that created it.
+  if (!user) {
+    return <AuthRoutes />;
   }
 
   return (
@@ -38,6 +65,8 @@ export function App() {
         <Route path="/budgets" element={<BudgetsPage />} />
         <Route path="/transfers" element={<TransfersPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/signup" element={<Navigate to="/" replace />} />
         <Route path="/savings" element={<Navigate to="/goals" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

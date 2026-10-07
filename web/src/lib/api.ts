@@ -1,6 +1,13 @@
-import { db, CURRENT_USER_ID, uid, type UserRecord, type AccountRecord, type CategoryRecord, type TransactionRecord, type TransferRecord, type BudgetRecord, type SavingsGoalRecord, type SavingsContributionRecord } from "./db";
+import { db, uid, type UserRecord, type AccountRecord, type CategoryRecord, type TransactionRecord, type TransferRecord, type BudgetRecord, type SavingsGoalRecord, type SavingsContributionRecord } from "./db";
 import { enqueueSync, toSyncPayload, type SyncEntityType, type SyncOperationType } from "./sync";
 import { parseAmountToMinor } from "./money";
+import {
+  clearCachedSession,
+  currentUserId,
+  loadCachedSession,
+  saveCachedSession,
+  setActiveUserId,
+} from "./session";
 
 const TOKEN_KEY = "moneyos.accessToken";
 const REFRESH_KEY = "moneyos.refreshToken";
@@ -256,111 +263,221 @@ async function getAccountBalance(accountId: string): Promise<{ balanceMinor: num
   return { balanceMinor: balance, currency: account.currency };
 }
 
-async function ensureDefaultUser(): Promise<UserRecord> {
-  let user = await db.users.get(CURRENT_USER_ID);
-  if (!user) {
-    user = {
-      id: CURRENT_USER_ID,
-      name: "User",
-      email: "user@moneyos.local",
-      defaultCurrency: "EGP",
-      locale: "ar",
-      createdAt: new Date().toISOString(),
-    };
-    await db.users.put(user);
-  }
-  return user;
+/**
+ * Upserts the local profile row for the active user and seeds the default
+ * category set for them. Keeps Dexie in step with the signed-in identity.
+ */
+async function ensureUserProfile(user: PublicUser): Promise<UserRecord> {
+  const existing = await db.users.get(user.id);
+  const record: UserRecord = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    defaultCurrency: user.defaultCurrency,
+    locale: user.locale,
+    createdAt: existing?.createdAt ?? user.createdAt,
+  };
+  await db.users.put(record);
+  return record;
 }
 
-async function ensureDefaultCategories(): Promise<void> {
-  const existing = await db.categories.where("userId").equals(CURRENT_USER_ID).count();
+async function ensureDefaultCategories(userId = currentUserId()): Promise<void> {
+  const existing = await db.categories.where("userId").equals(userId).count();
   if (existing > 0) return;
 
   const defaults: CategoryRecord[] = [
-    { id: uid(), userId: CURRENT_USER_ID, name: "Food & Dining", type: "expense", parentId: null, icon: null, color: null, sortOrder: 0, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Transport", type: "expense", parentId: null, icon: null, color: null, sortOrder: 1, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Shopping", type: "expense", parentId: null, icon: null, color: null, sortOrder: 2, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Bills & Utilities", type: "expense", parentId: null, icon: null, color: null, sortOrder: 3, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Entertainment", type: "expense", parentId: null, icon: null, color: null, sortOrder: 4, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Health", type: "expense", parentId: null, icon: null, color: null, sortOrder: 5, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Education", type: "expense", parentId: null, icon: null, color: null, sortOrder: 6, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Other", type: "both", parentId: null, icon: null, color: null, sortOrder: 7, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Salary", type: "income", parentId: null, icon: null, color: null, sortOrder: 8, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Freelance", type: "income", parentId: null, icon: null, color: null, sortOrder: 9, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Investment Returns", type: "income", parentId: null, icon: null, color: null, sortOrder: 10, system: true, isArchived: false },
-    { id: uid(), userId: CURRENT_USER_ID, name: "Other Income", type: "income", parentId: null, icon: null, color: null, sortOrder: 11, system: true, isArchived: false },
+    { id: uid(), userId, name: "Food & Dining", type: "expense", parentId: null, icon: null, color: null, sortOrder: 0, system: true, isArchived: false },
+    { id: uid(), userId, name: "Transport", type: "expense", parentId: null, icon: null, color: null, sortOrder: 1, system: true, isArchived: false },
+    { id: uid(), userId, name: "Shopping", type: "expense", parentId: null, icon: null, color: null, sortOrder: 2, system: true, isArchived: false },
+    { id: uid(), userId, name: "Bills & Utilities", type: "expense", parentId: null, icon: null, color: null, sortOrder: 3, system: true, isArchived: false },
+    { id: uid(), userId, name: "Entertainment", type: "expense", parentId: null, icon: null, color: null, sortOrder: 4, system: true, isArchived: false },
+    { id: uid(), userId, name: "Health", type: "expense", parentId: null, icon: null, color: null, sortOrder: 5, system: true, isArchived: false },
+    { id: uid(), userId, name: "Education", type: "expense", parentId: null, icon: null, color: null, sortOrder: 6, system: true, isArchived: false },
+    { id: uid(), userId, name: "Other", type: "both", parentId: null, icon: null, color: null, sortOrder: 7, system: true, isArchived: false },
+    { id: uid(), userId, name: "Salary", type: "income", parentId: null, icon: null, color: null, sortOrder: 8, system: true, isArchived: false },
+    { id: uid(), userId, name: "Freelance", type: "income", parentId: null, icon: null, color: null, sortOrder: 9, system: true, isArchived: false },
+    { id: uid(), userId, name: "Investment Returns", type: "income", parentId: null, icon: null, color: null, sortOrder: 10, system: true, isArchived: false },
+    { id: uid(), userId, name: "Other Income", type: "income", parentId: null, icon: null, color: null, sortOrder: 11, system: true, isArchived: false },
   ];
 
   await db.categories.bulkPut(defaults);
 }
 
+/** Extracts the `token` query parameter from a reset URL. */
+function extractToken(url: string): string | null {
+  const match = /[?&]token=([^&]+)/.exec(url);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+/** Normalises the backend error envelope into a readable message. */
+async function readErrorMessage(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: { message?: string } | string };
+    if (typeof body?.error === "string") return body.error;
+    if (body?.error && typeof body.error.message === "string") return body.error.message;
+  } catch {
+    // not JSON
+  }
+  return response.status === 429 ? "Too many attempts" : "Request failed";
+}
+
+/**
+ * Rotates the refresh token. Returns true when a new access token was stored.
+ * Used transparently by `me()` when the access token has expired.
+ */
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken || refreshToken === "local") return false;
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { tokens: TokenPair };
+    if (!data?.tokens?.accessToken) return false;
+    setTokens(data.tokens.accessToken, data.tokens.refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Creates/persists the local profile + default categories for a signed-in user. */
+async function activateUser(user: PublicUser, offline: boolean): Promise<PublicUser> {
+  setActiveUserId(user.id);
+  await ensureUserProfile(user);
+  await ensureDefaultCategories(user.id);
+  saveCachedSession({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    defaultCurrency: user.defaultCurrency,
+    locale: user.locale,
+    createdAt: user.createdAt,
+    offline,
+  });
+  return user;
+}
+
 export const api = {
   auth: {
+    /**
+     * Creates an account. Talks to the backend when it is reachable and falls
+     * back to a device-local account when it is not (offline-first).
+     */
     signup: async (body: { email: string; password: string; name: string }) => {
-      await ensureDefaultUser();
-      const user = await db.users.get(CURRENT_USER_ID);
-      if (user) {
-        user.name = body.name;
-        user.email = body.email;
-        await db.users.put(user);
-      }
-      await ensureDefaultCategories();
-
-      // Attempt real backend auth — store real JWT for API calls.
-      // Falls back to local-only mode if the backend is unreachable.
-      let accessToken = "local";
-      let refreshToken = "local";
+      const email = body.email.trim().toLowerCase();
+      let response: Response | null = null;
+      let networkFailure = false;
       try {
-        const res = await fetch("/api/auth/signup", {
+        response = await fetch("/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ email, password: body.password, name: body.name }),
         });
-        if (res.ok) {
-          const data = await res.json() as { user: PublicUser; tokens: TokenPair };
-          accessToken = data.tokens.accessToken;
-          refreshToken = data.tokens.refreshToken;
-        }
       } catch {
-        // Backend unavailable — continue in local-only mode.
+        networkFailure = true;
       }
 
-      const tokens = { accessToken, refreshToken, refreshExpiresAt: Date.now() + 86400000 };
+      if (response && response.ok) {
+        const data = (await response.json()) as { user: PublicUser; tokens: TokenPair };
+        setTokens(data.tokens.accessToken, data.tokens.refreshToken);
+        const user = await activateUser(data.user, false);
+        return { user, tokens: data.tokens };
+      }
+
+      if (response && response.status === 409) {
+        throw new ApiError("An account with this email already exists", 409, "EMAIL_TAKEN");
+      }
+      if (response && !response.ok) {
+        const message = await readErrorMessage(response);
+        throw new ApiError(message, response.status, "SIGNUP_FAILED");
+      }
+
+      if (!networkFailure) {
+        throw new ApiError("Sign up failed", 500, "SIGNUP_FAILED");
+      }
+
+      // Offline: create a device-local account so the user can start immediately.
+      const offlineId = `local-${uid()}`;
+      const user: PublicUser = {
+        id: offlineId,
+        email,
+        name: body.name,
+        defaultCurrency: "EGP",
+        locale: "en",
+        createdAt: new Date().toISOString(),
+      };
+      const tokens: TokenPair = { accessToken: "local", refreshToken: "local", refreshExpiresAt: Date.now() + 86400000 };
       setTokens(tokens.accessToken, tokens.refreshToken);
-      return { user: user as PublicUser, tokens };
+      await activateUser(user, true);
+      return { user, tokens };
     },
 
+    /**
+     * Signs in. Verifies against the backend when reachable; otherwise falls
+     * back to the device-local profile previously used with this email.
+     */
     login: async (body: { email: string; password: string }) => {
-      const user = await ensureDefaultUser();
-      await ensureDefaultCategories();
-
-      // Attempt real backend auth — store real JWT for API calls.
-      // Falls back to local-only mode if the backend is unreachable.
-      let accessToken = "local";
-      let refreshToken = "local";
+      const email = body.email.trim().toLowerCase();
+      let response: Response | null = null;
       try {
-        const res = await fetch("/api/auth/login", {
+        response = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ email, password: body.password }),
         });
-        if (res.ok) {
-          const data = await res.json() as { user: PublicUser; tokens: TokenPair };
-          accessToken = data.tokens.accessToken;
-          refreshToken = data.tokens.refreshToken;
-        }
       } catch {
-        // Backend unavailable — continue in local-only mode.
+        response = null;
       }
 
-      const tokens = { accessToken, refreshToken, refreshExpiresAt: Date.now() + 86400000 };
-      setTokens(tokens.accessToken, tokens.refreshToken);
-      return { user: user as PublicUser, tokens };
+      if (response && response.ok) {
+        const data = (await response.json()) as { user: PublicUser; tokens: TokenPair };
+        setTokens(data.tokens.accessToken, data.tokens.refreshToken);
+        const user = await activateUser(data.user, false);
+        return { user, tokens: data.tokens };
+      }
+
+      if (response && (response.status === 401 || response.status === 400)) {
+        throw new ApiError("Incorrect email or password", 401, "INVALID_CREDENTIALS");
+      }
+      if (response && !response.ok) {
+        const message = await readErrorMessage(response);
+        throw new ApiError(message, response.status, "LOGIN_FAILED");
+      }
+
+      // Offline: allow the device-local account for this email.
+      const cached = loadCachedSession();
+      const local = await db.users.filter((record) => record.email === email).first();
+      if ((cached && cached.email === email) || local) {
+        const source = local ?? (cached as unknown as UserRecord);
+        const user: PublicUser = {
+          id: source.id,
+          email: source.email,
+          name: source.name,
+          defaultCurrency: source.defaultCurrency,
+          locale: source.locale,
+          createdAt: source.createdAt,
+        };
+        const tokens: TokenPair = { accessToken: "local", refreshToken: "local", refreshExpiresAt: Date.now() + 86400000 };
+        setTokens(tokens.accessToken, tokens.refreshToken);
+        await activateUser(user, true);
+        return { user, tokens };
+      }
+
+      throw new ApiError(
+        "Cannot reach the server. Sign in once online to enable offline access.",
+        0,
+        "NETWORK_ERROR",
+      );
     },
 
     logout: async () => {
       const token = getAccessToken();
-      if (token && token !== "local") {
+      const refreshToken = getRefreshToken();
+      if (token && token !== "local" && refreshToken) {
         try {
           await fetch("/api/auth/logout", {
             method: "POST",
@@ -368,41 +485,145 @@ export const api = {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify({ refreshToken: getRefreshToken() }),
+            body: JSON.stringify({ refreshToken }),
           });
         } catch {
-          // ignore network errors on logout
+          // ignore network errors on logout â€” local session is cleared regardless
         }
       }
       clearTokens();
+      clearCachedSession();
+      setActiveUserId(null);
     },
 
-    forgotPassword: async (_email?: string) => {
-      return { ok: true as const };
+    /** Requests a reset link. Returns the dev link when the backend provides one. */
+    forgotPassword: async (email: string) => {
+      try {
+        const res = await fetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { ok: boolean; devResetUrl?: string };
+          const token = data.devResetUrl ? extractToken(data.devResetUrl) : null;
+          return { ok: true as const, resetToken: token };
+        }
+        if (res.status === 429) {
+          throw new ApiError("Too many attempts", 429, "RATE_LIMITED");
+        }
+      } catch (error) {
+        if (error instanceof ApiError) throw error;
+        // Backend unreachable â€” nothing to do but tell the user.
+        throw new ApiError("Cannot reach the server", 0, "NETWORK_ERROR");
+      }
+      // The backend intentionally answers 200 for unknown emails (no enumeration).
+      return { ok: true as const, resetToken: null };
     },
 
-    resetPassword: async (_token?: string, _password?: string) => {
-      return { ok: true as const };
+    resetPassword: async (token: string, password: string) => {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+      if (res.ok) {
+        return { ok: true as const };
+      }
+      if (res.status === 400) {
+        throw new ApiError("Invalid or expired reset link", 400, "INVALID_RESET_TOKEN");
+      }
+      throw new ApiError(await readErrorMessage(res), res.status, "RESET_FAILED");
     },
 
-    me: async () => {
-      const user = await ensureDefaultUser();
-      return user as PublicUser;
+    /**
+     * Returns the signed-in user. Prefers the backend (authoritative) and
+     * falls back to the cached device session when offline.
+     */
+    me: async (): Promise<PublicUser> => {
+      const token = getAccessToken();
+      if (token && token !== "local") {
+        try {
+          let res = await fetch("/api/auth/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.status === 401) {
+            const refreshed = await refreshAccessToken();
+            if (refreshed) {
+              res = await fetch("/api/auth/me", {
+                headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+              });
+            }
+          }
+          if (res.ok) {
+            const user = (await res.json()) as PublicUser;
+            await activateUser(user, false);
+            return user;
+          }
+        } catch {
+          // fall through to the cached session
+        }
+      }
+
+      const cached = loadCachedSession();
+      if (cached) {
+        const user: PublicUser = {
+          id: cached.id,
+          email: cached.email,
+          name: cached.name,
+          defaultCurrency: cached.defaultCurrency,
+          locale: cached.locale,
+          createdAt: cached.createdAt,
+        };
+        await activateUser(user, true);
+        return user;
+      }
+
+      throw new ApiError("Not signed in", 401, "UNAUTHENTICATED");
     },
 
     updateMe: async (body: { name?: string; defaultCurrency?: string }) => {
-      const user = await ensureDefaultUser();
-      if (body.name !== undefined) user.name = body.name;
-      if (body.defaultCurrency !== undefined) user.defaultCurrency = body.defaultCurrency;
-      await db.users.put(user);
-      return user as PublicUser;
+      const id = currentUserId();
+      const existing = await db.users.get(id);
+      const token = getAccessToken();
+
+      if (token && token !== "local") {
+        try {
+          const res = await fetch("/api/auth/me", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+          });
+          if (res.ok) {
+            const user = (await res.json()) as PublicUser;
+            await activateUser(user, false);
+            return user;
+          }
+        } catch {
+          // offline â€” apply locally below
+        }
+      }
+
+      if (!existing) {
+        throw new ApiError("Not signed in", 401, "UNAUTHENTICATED");
+      }
+      if (body.name !== undefined) existing.name = body.name;
+      if (body.defaultCurrency !== undefined) existing.defaultCurrency = body.defaultCurrency;
+      await db.users.put(existing);
+      saveCachedSession({ ...existing, offline: true });
+      return existing as PublicUser;
     },
+
+    /** Device-local profile for the active user (used by settings/onboarding). */
+    currentProfile: async (): Promise<UserRecord | null> => (await db.users.get(currentUserId())) ?? null,
   },
 
   accounts: {
     list: async (): Promise<AccountView[]> => {
-      await ensureDefaultUser();
-      const records = await db.accounts.where("userId").equals(CURRENT_USER_ID).toArray();
+      const records = await db.accounts.where("userId").equals(currentUserId()).toArray();
       const views: AccountView[] = [];
       for (const r of records) {
         const { balanceMinor } = await getAccountBalance(r.id);
@@ -424,7 +645,7 @@ export const api = {
       const openingBalanceMinor = parseAmountToMinor(body.openingBalance || "0", body.currency ?? "EGP");
       const record: AccountRecord = {
         id: uid(),
-        userId: CURRENT_USER_ID,
+        userId: currentUserId(),
         name: body.name,
         type: body.type,
         currency: body.currency,
@@ -508,9 +729,8 @@ export const api = {
 
   categories: {
     list: async (): Promise<CategoryView[]> => {
-      await ensureDefaultUser();
       await ensureDefaultCategories();
-      const records = await db.categories.where("userId").equals(CURRENT_USER_ID).sortBy("sortOrder");
+      const records = await db.categories.where("userId").equals(currentUserId()).sortBy("sortOrder");
       return records.map((r) => ({
         id: r.id,
         name: r.name,
@@ -526,13 +746,13 @@ export const api = {
     create: async (body: { name: string; type: string }): Promise<CategoryView> => {
       const maxSort = await db.categories
         .where("userId")
-        .equals(CURRENT_USER_ID)
+        .equals(currentUserId())
         .toArray()
         .then((cats) => Math.max(0, ...cats.map((c) => c.sortOrder)));
 
       const record: CategoryRecord = {
         id: uid(),
-        userId: CURRENT_USER_ID,
+        userId: currentUserId(),
         name: body.name,
         type: body.type,
         parentId: null,
@@ -602,7 +822,7 @@ export const api = {
 
       const all = await db.transactions
         .where("userId")
-        .equals(CURRENT_USER_ID)
+        .equals(currentUserId())
         .reverse()
         .sortBy("date");
 
@@ -637,7 +857,7 @@ export const api = {
       const amountMinor = parseAmountToMinor(body.amount, account.currency);
       const tx: TransactionRecord = {
         id: uid(),
-        userId: CURRENT_USER_ID,
+        userId: currentUserId(),
         accountId: body.accountId,
         categoryId: body.categoryId,
         type: body.type,
@@ -688,7 +908,7 @@ export const api = {
 
       const all = await db.transfers
         .where("userId")
-        .equals(CURRENT_USER_ID)
+        .equals(currentUserId())
         .reverse()
         .sortBy("date");
 
@@ -741,7 +961,7 @@ export const api = {
 
       const transfer: TransferRecord = {
         id: transferId,
-        userId: CURRENT_USER_ID,
+        userId: currentUserId(),
         fromAccountId: body.fromAccountId,
         toAccountId: body.toAccountId,
         amountMinor,
@@ -756,7 +976,7 @@ export const api = {
 
       const legOut: TransactionRecord = {
         id: uid(),
-        userId: CURRENT_USER_ID,
+        userId: currentUserId(),
         accountId: body.fromAccountId,
         categoryId: null,
         type: "transfer",
@@ -773,7 +993,7 @@ export const api = {
 
       const legIn: TransactionRecord = {
         id: uid(),
-        userId: CURRENT_USER_ID,
+        userId: currentUserId(),
         accountId: body.toAccountId,
         categoryId: null,
         type: "transfer",
@@ -814,15 +1034,14 @@ export const api = {
 
   dashboard: {
     get: async (query: { month?: string; currency?: string }): Promise<DashboardView> => {
-      await ensureDefaultUser();
-      const user = await db.users.get(CURRENT_USER_ID);
+      const user = await db.users.get(currentUserId());
       const defaultCurrency = query.currency ?? user?.defaultCurrency ?? "EGP";
       const month = query.month ?? (() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       })();
 
-      const allTxs = await db.transactions.where("userId").equals(CURRENT_USER_ID).toArray();
+      const allTxs = await db.transactions.where("userId").equals(currentUserId()).toArray();
       const monthTxs = allTxs.filter((tx) => tx.date.startsWith(month));
 
       let incomeMinor = 0;
@@ -842,7 +1061,7 @@ export const api = {
       const savingsMinor = incomeMinor - expensesMinor;
       const savingsRatePercent = incomeMinor > 0 ? Math.round((savingsMinor / incomeMinor) * 100) : null;
 
-      const categories = await db.categories.where("userId").equals(CURRENT_USER_ID).toArray();
+      const categories = await db.categories.where("userId").equals(currentUserId()).toArray();
       const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
       const spendingByCategory = Object.entries(categorySpending)
@@ -859,7 +1078,7 @@ export const api = {
         })
         .sort((a, b) => b.amountMinor - a.amountMinor);
 
-      const accounts = await db.accounts.where("userId").equals(CURRENT_USER_ID).toArray();
+      const accounts = await db.accounts.where("userId").equals(currentUserId()).toArray();
       const accountBalances: { accountId: string; name: string; currency: string; balanceMinor: number }[] = [];
       const balancesByCurrency: Record<string, number> = {};
 
@@ -920,17 +1139,17 @@ export const api = {
 
       let records = await db.budgets
         .where("userId")
-        .equals(CURRENT_USER_ID)
+        .equals(currentUserId())
         .toArray();
 
       if (!query.includeArchived) {
         records = records.filter((r) => !r.isArchived);
       }
 
-      const categories = await db.categories.where("userId").equals(CURRENT_USER_ID).toArray();
+      const categories = await db.categories.where("userId").equals(currentUserId()).toArray();
       const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-      const allTxs = await db.transactions.where("userId").equals(CURRENT_USER_ID).toArray();
+      const allTxs = await db.transactions.where("userId").equals(currentUserId()).toArray();
       const monthTxs = allTxs.filter((tx) => tx.date.startsWith(period) && tx.type === "expense" && !tx.reversalOfId);
 
       const views: BudgetView[] = [];
@@ -976,7 +1195,7 @@ export const api = {
       const amountMinor = parseAmountToMinor(body.amount, body.currency);
       const record: BudgetRecord = {
         id: uid(),
-        userId: CURRENT_USER_ID,
+        userId: currentUserId(),
         categoryId: body.categoryId,
         amountMinor,
         currency: body.currency,
@@ -1029,7 +1248,7 @@ export const api = {
       const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const monthTxs = await db.transactions
         .where("userId")
-        .equals(CURRENT_USER_ID)
+        .equals(currentUserId())
         .and((tx) => tx.date.startsWith(month) && tx.type === "expense" && !tx.reversalOfId)
         .toArray();
 
@@ -1101,7 +1320,7 @@ export const api = {
 
   savingsGoals: {
     list: async (query: { includeArchived?: boolean }): Promise<SavingsGoalView[]> => {
-      let records = await db.savingsGoals.where("userId").equals(CURRENT_USER_ID).toArray();
+      let records = await db.savingsGoals.where("userId").equals(currentUserId()).toArray();
       if (!query.includeArchived) {
         records = records.filter((r) => !r.isArchived);
       }
@@ -1156,7 +1375,7 @@ export const api = {
       const now = new Date().toISOString();
       const record: SavingsGoalRecord = {
         id: uid(),
-        userId: CURRENT_USER_ID,
+        userId: currentUserId(),
         name: body.name,
         currency: body.currency,
         targetAmountMinor,

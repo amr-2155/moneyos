@@ -1,5 +1,7 @@
 import {
+  cloneElement,
   forwardRef,
+  isValidElement,
   useEffect,
   useId,
   useRef,
@@ -74,13 +76,58 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTM
 );
 
 /* ------------------------------ Forms ------------------------------ */
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({
+  label,
+  hint,
+  affix,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  /** Optional control rendered inside the input row (e.g. a reveal button). */
+  affix?: ReactNode;
+  children: ReactNode;
+}) {
+  const autoId = useId();
+  const hintId = useId();
+
+  const childProps = isValidElement<Record<string, unknown>>(children)
+    ? (children.props as { id?: string; "aria-describedby"?: string })
+    : undefined;
+  const controlId = childProps?.id ?? autoId;
+  const describedBy = [childProps?.["aria-describedby"], hint ? hintId : undefined]
+    .filter(Boolean)
+    .join(" ");
+
+  // Wire the label and the hint to the control explicitly. Keeping the hint
+  // *outside* the <label> matters: otherwise it becomes part of the field's
+  // accessible name ("Password At least 8 characters") instead of a description.
+  const control = isValidElement<Record<string, unknown>>(children)
+    ? cloneElement(children, {
+        id: controlId,
+        "aria-describedby": describedBy || undefined,
+      })
+    : children;
+
   return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      {children}
-      {hint ? <span className="field-hint">{hint}</span> : null}
-    </label>
+    <div className="field">
+      <label className="field-label" htmlFor={controlId}>
+        {label}
+      </label>
+      {affix ? (
+        <div className="input-affix">
+          {control}
+          {affix}
+        </div>
+      ) : (
+        control
+      )}
+      {hint ? (
+        <span className="field-hint" id={hintId}>
+          {hint}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

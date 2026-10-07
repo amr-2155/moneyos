@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useI18n, type TranslationKey } from "../i18n";
+import { useAuth } from "../lib/auth";
 import { Icon, type IconName } from "./Icon";
 
 interface NavItem {
@@ -21,6 +22,7 @@ const NAV: NavItem[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
+  const { offline } = useAuth();
   const { pathname } = useLocation();
 
   return (
@@ -60,6 +62,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
           MoneyOS
         </Link>
+        {offline ? (
+          <span className="sync-pill" title={t("auth.offlineNotice")}>
+            <Icon name="info" size={14} />
+            {t("nav.offline")}
+          </span>
+        ) : null}
       </header>
 
       <main className="app-main">

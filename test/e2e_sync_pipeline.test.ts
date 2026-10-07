@@ -58,7 +58,7 @@ describe("Phase 9.1 E2E: Full Sync Pipeline via HTTP", () => {
   });
 
   it("TEST A: sync expense via HTTP → backend DB → analytics (signed amounts)", async () => {
-    const { accessToken, userId } = await signupUser(app, "e2e-http-a@example.com");
+    const { accessToken } = await signupUser(app, "e2e-http-a@example.com");
     const account = await createAccount(app, accessToken, {
       name: "Main Checking",
       currency: "EGP",
@@ -145,7 +145,7 @@ describe("Phase 9.1 E2E: Full Sync Pipeline via HTTP", () => {
   });
 
   it("TEST B: idempotency via HTTP — same operationId twice creates only one record", async () => {
-    const { accessToken, userId } = await signupUser(app, "e2e-http-b@example.com");
+    const { accessToken } = await signupUser(app, "e2e-http-b@example.com");
     const account = await createAccount(app, accessToken, { name: "Main", currency: "EGP", openingBalance: "0" });
     const expenseCat = await createCategory(app, accessToken, { name: "Food", type: "expense" });
 
@@ -189,7 +189,7 @@ describe("Phase 9.1 E2E: Full Sync Pipeline via HTTP", () => {
 
   it("TEST C: malformed operation returns PERMANENT_ERROR, not silently stored", async () => {
     const { accessToken } = await signupUser(app, "e2e-http-c@example.com");
-    const account = await createAccount(app, accessToken, { name: "Main", currency: "EGP", openingBalance: "0" });
+    await createAccount(app, accessToken, { name: "Main", currency: "EGP", openingBalance: "0" });
     const expenseCat = await createCategory(app, accessToken, { name: "Food", type: "expense" });
 
     const syncOp: SyncOperationInput = {

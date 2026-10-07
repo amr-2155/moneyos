@@ -1,13 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { api, getAccessToken, setTokens, type PublicUser } from "./api";
+import { api, getAccessToken, type PublicUser } from "./api";
 import { startSyncEngine } from "./sync";
+import { setActiveUserId } from "./session";
 import { db, type UserRecord, type AccountRecord, type CategoryRecord, type TransactionRecord, type TransferRecord, type BudgetRecord, type SavingsGoalRecord, type SavingsContributionRecord } from "./db";
 
 interface AuthContextValue {
+  /** Signed-in user, or null when the user must authenticate first. */
   user: PublicUser | null;
   loading: boolean;
+  /** True when the session is device-local (backend unreachable / not yet synced). */
+  offline: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
   updateUser: (patch: { name?: string; defaultCurrency?: string }) => Promise<void>;
-  logout: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ resetToken: string | null }>;
+  resetPassword: (token: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -15,6 +23,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [offline, setOffline] = useState(false);
   const syncStopRef = useRef<(() => void) | null>(null);
 
   const startSync = useCallback(() => {
@@ -32,76 +41,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const applyUser = useCallback((next: PublicUser | null) => {
+    setUser(next);
+    setActiveUserId(next?.id ?? null);
+    setOffline(getAccessToken() === "local");
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     async function restore() {
       try {
-        const me = await api.auth.me();
-        if (!cancelled) setUser(me);
-
-        // If no real JWT token is stored, attempt backend auth to get one.
-        // This enables authenticated API calls (e.g. analytics) in dev.
-        const token = getAccessToken();
-        if (!token || token === "local") {
-          try {
-            // Try login first; fall back to signup on 401 (user not yet created).
-            const credentials = { email: me.email, password: "local", name: me.name };
-            let res = await fetch("/api/auth/login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: me.email, password: "local" }),
-            });
-            if (res.status === 401) {
-              res = await fetch("/api/auth/signup", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(credentials),
-              });
-            }
-            if (res.ok) {
-              const data = await res.json() as { tokens: { accessToken: string; refreshToken: string } };
-              if (data.tokens.accessToken && data.tokens.accessToken !== "local") {
-                setTokens(data.tokens.accessToken, data.tokens.refreshToken);
-              }
-            }
-          } catch {
-            // Backend unavailable — stay in local-only mode.
-          }
+        const me = (await api.auth.me()) as PublicUser | undefined;
+        if (cancelled) return;
+        if (me) {
+          applyUser(me);
+          startSync();
+        } else {
+          applyUser(null);
         }
       } catch {
-        // Local Dexie unavailable — try backend auth only.
-        try {
-          const result = await api.auth.login({
-            email: "user@moneyos.local",
-            password: "local",
-          });
-          if (!cancelled) setUser(result.user);
-        } catch {
-          // IndexedDB might be unavailable
-        }
+        // No usable session on this device — the user must sign in.
+        if (!cancelled) applyUser(null);
       } finally {
         if (!cancelled) setLoading(false);
-        startSync();
       }
     }
     void restore();
-    return () => { cancelled = true; stopSync(); };
-  }, []);
+    return () => {
+      cancelled = true;
+      stopSync();
+    };
+  }, [applyUser, startSync, stopSync]);
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const result = await api.auth.login({ email, password });
+      applyUser(result.user);
+      startSync();
+    },
+    [applyUser, startSync],
+  );
+
+  const signUp = useCallback(
+    async (name: string, email: string, password: string) => {
+      const result = await api.auth.signup({ name, email, password });
+      applyUser(result.user);
+      startSync();
+    },
+    [applyUser, startSync],
+  );
+
+  const signOut = useCallback(async () => {
+    stopSync();
+    await api.auth.logout();
+    applyUser(null);
+  }, [applyUser, stopSync]);
 
   const updateUser = useCallback(async (patch: { name?: string; defaultCurrency?: string }) => {
-    const updated = await api.auth.updateMe(patch);
+    const updated = (await api.auth.updateMe(patch)) as PublicUser;
     setUser(updated);
   }, []);
 
-  const logout = useCallback(async () => {
-    stopSync();
-    await api.auth.logout();
-    setUser(null);
+  const requestPasswordReset = useCallback(
+    async (email: string) => api.auth.forgotPassword(email),
+    [],
+  );
+
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    await api.auth.resetPassword(token, password);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, updateUser, logout }),
-    [user, loading, updateUser, logout],
+    () => ({ user, loading, offline, signIn, signUp, signOut, updateUser, requestPasswordReset, resetPassword }),
+    [user, loading, offline, signIn, signUp, signOut, updateUser, requestPasswordReset, resetPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
