@@ -361,6 +361,16 @@ async function activateUser(user: PublicUser, offline: boolean): Promise<PublicU
   return user;
 }
 
+/**
+ * True when a response actually came from the JSON API. Static hosts such as
+ * GitHub Pages answer unknown `/api/*` paths with an HTML page, which must be
+ * treated as "backend not reachable" rather than a real auth rejection.
+ */
+function isApiResponse(response: Response): boolean {
+  const contentType = response.headers.get("content-type") ?? "";
+  return contentType.includes("application/json");
+}
+
 export const api = {
   auth: {
     /**
@@ -379,6 +389,17 @@ export const api = {
         });
       } catch {
         networkFailure = true;
+      }
+
+      // Static hosts (GitHub Pages) answer /api with an HTML 404 rather than
+      // failing the request. Treat "no JSON API" as no backend so the user can
+      // still start immediately instead of hitting a wall.
+      if (response && !response.ok) {
+        const looksLikeApi = isApiResponse(response);
+        if (!looksLikeApi) {
+          networkFailure = true;
+          response = null;
+        }
       }
 
       if (response && response.ok) {
@@ -430,6 +451,12 @@ export const api = {
           body: JSON.stringify({ email, password: body.password }),
         });
       } catch {
+        response = null;
+      }
+
+      // A static host answers /api with HTML, not JSON: that is a missing
+      // backend, not a rejected password.
+      if (response && !response.ok && !isApiResponse(response)) {
         response = null;
       }
 
@@ -555,7 +582,7 @@ export const api = {
               });
             }
           }
-          if (res.ok) {
+          if (res.ok && isApiResponse(res)) {
             const user = (await res.json()) as PublicUser;
             await activateUser(user, false);
             return user;
@@ -597,13 +624,13 @@ export const api = {
             },
             body: JSON.stringify(body),
           });
-          if (res.ok) {
+          if (res.ok && isApiResponse(res)) {
             const user = (await res.json()) as PublicUser;
             await activateUser(user, false);
             return user;
           }
         } catch {
-          // offline â€” apply locally below
+          // offline — apply locally below
         }
       }
 
