@@ -149,6 +149,11 @@ export const en = {
     noTrend: "No data yet",
     noTrendHint: "Add transactions to see trends over time.",
   },
+  ptr: {
+    pull: "Pull down to refresh",
+    release: "Release to refresh",
+    refreshing: "Refreshing…",
+  },
   home: {
     greeting: "Hello {name} 👋",
     now: "Now",
