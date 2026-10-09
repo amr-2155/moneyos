@@ -567,6 +567,24 @@ textarea {
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
+/*
+ * Chrome/Android paints a light background on autofilled fields (notably the
+ * password field) which ignores the theme in dark mode. The inset box-shadow
+ * covers that injected background while keeping the field's own colours.
+ */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.input:-webkit-autofill:active,
+.select:-webkit-autofill,
+.textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  box-shadow: 0 0 0 1000px var(--surface) inset;
+  caret-color: var(--foreground);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 .textarea {
   resize: vertical;
   min-height: 72px;
