@@ -7,6 +7,7 @@ import { useI18n } from "../i18n";
 import { AnimatedNumber, Button, EmptyState, Input, ProgressBar, SkeletonCard } from "../components/ui";
 import { Icon } from "../components/Icon";
 import { TransactionItem } from "../components/TransactionItem";
+import { PullToRefresh } from "../components/PullToRefresh";
 import { useErrorMessage } from "../lib/errors";
 import { contributionsInMonth, goalKind, loadDistribution, monthlyTargets, type Distribution } from "../lib/distribution";
 import { localizeCategoryName } from "../lib/categoryNames";
@@ -177,6 +178,14 @@ export function HomePage() {
   }).format(now);
 
   return (
+    <PullToRefresh
+      onRefresh={() => load()}
+      labels={{
+        pull: t("ptr.pull"),
+        release: t("ptr.release"),
+        refreshing: t("ptr.refreshing"),
+      }}
+    >
     <div className="page home-page">
       <div className="home-now" aria-label={t("home.now")}>
         <span className="home-now-live" aria-hidden />
@@ -402,5 +411,6 @@ export function HomePage() {
         onSaved={() => setDistribution(loadDistribution())}
       />
     </div>
+    </PullToRefresh>
   );
 }

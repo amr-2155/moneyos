@@ -5280,3 +5280,74 @@ button.chip:hover {
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* ================= Pull to refresh (pure CSS, no animation library) ================= */
+.ptr {
+  position: relative;
+  min-height: 100%;
+}
+
+.ptr-indicator {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  display: grid;
+  place-items: center;
+  height: 56px;
+  margin: 0 auto;
+  width: 40px;
+  max-width: 40px;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.ptr-spinner {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--primary);
+  will-change: transform;
+}
+
+.ptr-spinner.is-spinning {
+  animation: ptr-spin .9s linear infinite;
+}
+
+.ptr-spinner.is-static {
+  animation: none;
+}
+
+.ptr-content {
+  will-change: transform;
+}
+
+.ptr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ptr-spinner.is-spinning {
+    animation: none;
+  }
+
+  .ptr-content,
+  .ptr-indicator {
+    transition: none !important;
+  }
+}

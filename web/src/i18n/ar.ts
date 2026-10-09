@@ -151,6 +151,11 @@ export const ar: EnMessages = {
     noTrend: "لا توجد بيانات بعد",
     noTrendHint: "أضف معاملات لعرض الاتجاهات مع مرور الوقت.",
   },
+  ptr: {
+    pull: "اسحب للأسفل للتحديث",
+    release: "أفلت للتحديث",
+    refreshing: "جاري التحديث…",
+  },
   home: {
     greeting: "أهلاً {name} 👋",
     now: "الآن",
