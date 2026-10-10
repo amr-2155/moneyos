@@ -371,6 +371,13 @@ function isApiResponse(response: Response): boolean {
   return contentType.includes("application/json");
 }
 
+/** The UI language the user is currently running, preferring their saved choice. */
+function currentLocale(): "ar" | "en" {
+  const stored = localStorage.getItem("moneyos.locale");
+  if (stored === "ar" || stored === "en") return stored;
+  return (navigator.language || "en").toLowerCase().startsWith("ar") ? "ar" : "en";
+}
+
 export const api = {
   auth: {
     /**
@@ -422,13 +429,15 @@ export const api = {
       }
 
       // Offline: create a device-local account so the user can start immediately.
+      // Locale follows the chosen UI language so the shell does not flip back
+      // to English after the redirect into the app.
       const offlineId = `local-${uid()}`;
       const user: PublicUser = {
         id: offlineId,
         email,
         name: body.name,
         defaultCurrency: "EGP",
-        locale: "en",
+        locale: currentLocale(),
         createdAt: new Date().toISOString(),
       };
       const tokens: TokenPair = { accessToken: "local", refreshToken: "local", refreshExpiresAt: Date.now() + 86400000 };
