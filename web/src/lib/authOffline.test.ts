@@ -67,6 +67,25 @@ describe("auth on a host without an API", () => {
     });
   });
 
+  it("creates offline accounts in the language the UI is running", async () => {
+    localStorage.setItem("moneyos.locale", "ar");
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(htmlNotFound());
+
+    const { user } = await api.auth.signup({ email: "amr@example.com", password: "supersecret", name: "Amr" });
+
+    expect(user.locale).toBe("ar");
+  });
+
+  it("falls back to the browser language when no choice was saved", async () => {
+    localStorage.removeItem("moneyos.locale");
+    Object.defineProperty(navigator, "language", { value: "ar-EG", configurable: true });
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(htmlNotFound());
+
+    const { user } = await api.auth.signup({ email: "amr@example.com", password: "supersecret", name: "Amr" });
+
+    expect(user.locale).toBe("ar");
+  });
+
   it("still reports a duplicate email for signup", async () => {
     vi.mocked(globalThis.fetch).mockResolvedValueOnce(
       jsonResponse({ error: { message: "Email already used" } }, 409),
