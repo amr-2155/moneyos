@@ -473,6 +473,7 @@ export const en = {
     network: "Cannot reach the server. Check your connection.",
     generic: "Something went wrong. Please try again.",
     sessionExpired: "Your session has expired. Please sign in again.",
+    forbidden: "You do not have permission to access this resource.",
     rateLimited: "Too many attempts. Please wait a moment and try again.",
     conflict: "That already exists. Please try something else.",
   },
