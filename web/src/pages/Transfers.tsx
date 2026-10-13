@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, type AccountView, type TransferView } from "../lib/api";
-import { formatCurrency, formatDate } from "../lib/format";
+import { formatCurrency, formatDate, formatDateLong } from "../lib/format";
 import { useI18n } from "../i18n";
 import { Badge, Button, ConfirmDialog, EmptyState, Field, FieldRow, IconButton, Input, Modal, PageHeader, Select, SkeletonCard } from "../components/ui";
 import { Icon } from "../components/Icon";
+import { DateField } from "../components/DateField";
 import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
 
@@ -252,7 +253,7 @@ function TransferFormModal({ onClose, onSaved }: { onClose: () => void; onSaved:
           <Input type="number" inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus required />
         </Field>
         <Field label={t("common.date")}>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+          <DateField value={date} onChange={setDate} formatValue={formatDateLong} emptyHint={t("common.date")} required />
         </Field>
         <Field label={t("common.notes")}>
           <Input value={notes} onChange={(e) => setNotes(e.target.value)} />

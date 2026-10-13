@@ -391,6 +391,8 @@ export const ar: EnMessages = {
     thresholdSoon: "قرب الحد",
     thresholdLate: "اللحظة الأخيرة",
     thresholdCustom: "عتبة التنبيه",
+    thresholdLow: "بدري",
+    thresholdHigh: "آخر لحظة",
     add: "ميزانية جديدة",
   },
   categories: {

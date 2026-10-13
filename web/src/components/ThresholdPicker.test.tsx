@@ -8,6 +8,8 @@ const labels = {
   late: "اللحظة الأخيرة",
   now: "التنبيه عند",
   custom: "عتبة التنبيه",
+  low: "بدري",
+  high: "آخر لحظة",
 };
 
 describe("ThresholdPicker", () => {

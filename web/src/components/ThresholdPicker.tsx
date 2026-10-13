@@ -19,6 +19,9 @@ interface ThresholdPickerProps {
     late: string;
     now: string;
     custom: string;
+    /** Slider end captions, kept distinct from the urgency labels above. */
+    low: string;
+    high: string;
   };
   disabled?: boolean;
 }
@@ -84,7 +87,7 @@ export function ThresholdPicker({
       </div>
 
       <div className="threshold-slider-row">
-        <span className="threshold-slider-cap">{labels.early}</span>
+        <span className="threshold-slider-cap">{labels.low}</span>
         <input
           id={sliderId}
           className="threshold-slider"
@@ -99,7 +102,7 @@ export function ThresholdPicker({
           onChange={(event) => onChange(Number(event.target.value))}
           style={{ ["--fill" as string]: `${value}%` }}
         />
-        <span className="threshold-slider-cap">{labels.late}</span>
+        <span className="threshold-slider-cap">{labels.high}</span>
       </div>
     </div>
   );

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type AccountView, type CategoryView, type TransactionView } from "../lib/api";
-import { formatDate } from "../lib/format";
+import { formatDate, formatDateLong } from "../lib/format";
 import { transactionCategoryOptions } from "../lib/transactions";
 import { useI18n } from "../i18n";
 import { Button, ConfirmDialog, EmptyState, Field, FieldRow, IconButton, Input, Modal, PageHeader, SegmentedControl, Select, SkeletonCard } from "../components/ui";
 import { Icon } from "../components/Icon";
 import { TransactionItem } from "../components/TransactionItem";
+import { DateField } from "../components/DateField";
 import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
 import { localizeCategoryName } from "../lib/categoryNames";
@@ -316,7 +317,7 @@ function TransactionFormModal({ onClose, onSaved }: { onClose: () => void; onSav
         </Field>
 
         <Field label={t("common.date")}>
-          <Input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} required />
+          <DateField value={date} onChange={setDate} max={today} formatValue={formatDateLong} emptyHint={t("common.date")} required />
         </Field>
 
         {type === "transfer" ? (

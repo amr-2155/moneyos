@@ -307,6 +307,8 @@ function BudgetFormModal({
               late: t("budgets.thresholdLate"),
               now: t("budgets.warnAt"),
               custom: t("budgets.thresholdCustom"),
+              low: t("budgets.thresholdLow"),
+              high: t("budgets.thresholdHigh"),
             }}
           />
         </Field>
