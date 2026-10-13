@@ -388,6 +388,8 @@ export const en = {
     thresholdSoon: "Close to the limit",
     thresholdLate: "Last moment",
     thresholdCustom: "Alert threshold",
+    thresholdLow: "Early",
+    thresholdHigh: "Last moment",
     add: "New budget",
   },
   categories: {
