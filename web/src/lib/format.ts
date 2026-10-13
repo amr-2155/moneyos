@@ -134,8 +134,24 @@ export function formatDate(date: string): string {
   }
 }
 
-export function currentMonth(): string {
-  const now = new Date();
+/**
+ * Long-form date, e.g. "الثلاثاء، 11 أكتوبر 2026". Used as the readable echo
+ * under a date input, where the browser's own mm/dd/yyyy is hard to read.
+ */
+export function formatDateLong(date: string): string {
+  try {
+    return new Intl.DateTimeFormat(currentLocale, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(`${date}T00:00:00`));
+  } catch {
+    return date;
+  }
+}
+
+export function currentMonth(): string {  const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   return `${y}-${m}`;

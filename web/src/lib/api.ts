@@ -849,6 +849,63 @@ export const api = {
         isArchived: true,
       };
     },
+
+    /** Brings an archived category back into the active lists. */
+    restore: async (id: string): Promise<CategoryView> => {
+      const record = await db.categories.get(id);
+      if (!record) throw new ApiError("Category not found", 404, "NOT_FOUND");
+      record.isArchived = false;
+      await db.categories.put(record);
+      void queueSync("category", "UPDATE", record.id, record);
+      return {
+        id: record.id,
+        name: record.name,
+        type: record.type as "income" | "expense" | "both",
+        parentId: record.parentId,
+        icon: record.icon,
+        color: record.color,
+        system: record.system,
+        isArchived: false,
+      };
+    },
+
+    /**
+     * How many transactions and budgets still point at this category.
+     * A category in use cannot be hard-deleted without orphaning those rows,
+     * so the UI asks the user to archive or reassign first.
+     */
+    usage: async (id: string): Promise<{ transactions: number; budgets: number }> => {
+      const transactions = await db.transactions
+        .where("categoryId")
+        .equals(id)
+        .filter((tx) => tx.userId === currentUserId())
+        .count();
+      const budgets = await db.budgets
+        .where("categoryId")
+        .equals(id)
+        .filter((budget) => budget.userId === currentUserId())
+        .count();
+      return { transactions, budgets };
+    },
+
+    /**
+     * Permanently removes a category. Refuses while anything still references
+     * it, so financial records are never orphaned.
+     */
+    remove: async (id: string): Promise<void> => {
+      const record = await db.categories.get(id);
+      if (!record) throw new ApiError("Category not found", 404, "NOT_FOUND");
+      const { transactions, budgets } = await api.categories.usage(id);
+      if (transactions > 0 || budgets > 0) {
+        throw new ApiError(
+          "Category is still in use",
+          409,
+          "CATEGORY_IN_USE",
+        );
+      }
+      await db.categories.delete(id);
+      void queueSync("category", "DELETE", id, { id });
+    },
   },
 
   transactions: {

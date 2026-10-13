@@ -387,6 +387,7 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel,
   tone = "neutral",
+  loading = false,
   onConfirm,
   onCancel,
 }: {
@@ -395,6 +396,8 @@ export function ConfirmDialog({
   confirmLabel: string;
   cancelLabel: string;
   tone?: "neutral" | "danger";
+  /** Disables both actions and shows progress, so a slow delete cannot be double-fired. */
+  loading?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -402,10 +405,10 @@ export function ConfirmDialog({
     <Modal title={title} onClose={onCancel}>
       <p className="muted">{message}</p>
       <div className="modal-actions">
-        <Button variant="secondary" onClick={onCancel}>
+        <Button variant="secondary" onClick={onCancel} disabled={loading}>
           {cancelLabel}
         </Button>
-        <Button variant={tone === "danger" ? "danger" : "primary"} onClick={onConfirm} autoFocus>
+        <Button variant={tone === "danger" ? "danger" : "primary"} onClick={onConfirm} autoFocus loading={loading} disabled={loading}>
           {confirmLabel}
         </Button>
       </div>
