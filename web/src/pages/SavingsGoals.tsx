@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useState } from "react";
 import { api, type SavingsGoalView } from "../lib/api";
-import { CURRENCIES, formatCurrency, formatMonth, minorToDecimal } from "../lib/format";
+import { CURRENCIES, formatCurrency, formatDateLong, formatMonth, minorToDecimal } from "../lib/format";
+import { DateField } from "../components/DateField";
 import { useAuth } from "../lib/auth";
 import { useI18n } from "../i18n";
 import { AnimatedNumber, Badge, Button, ConfirmDialog, EmptyState, Field, FieldRow, Input, Modal, PageHeader, ProgressBar, Select, SkeletonCard } from "../components/ui";
@@ -265,7 +266,12 @@ function GoalFormModal({
           </Field>
         ) : null}
         <Field label={t("savings.targetDate")}>
-          <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          <DateField
+            value={targetDate}
+            onChange={setTargetDate}
+            formatValue={formatDateLong}
+            emptyHint={t("savings.targetDateHint")}
+          />
         </Field>
         <Field label={t("savings.description")}>
           <Input value={description} onChange={(e) => setDescription(e.target.value)} />

@@ -5,6 +5,7 @@ import { useAuth } from "../lib/auth";
 import { useI18n, type TranslationKey } from "../i18n";
 import { AnimatedNumber, Badge, Button, ConfirmDialog, EmptyState, Field, Input, Modal, PageHeader, ProgressBar, Select, SkeletonCard, StatCard } from "../components/ui";
 import { useToast } from "../components/Toast";
+import { ThresholdPicker } from "../components/ThresholdPicker";
 import { useErrorMessage } from "../lib/errors";
 import { localizeCategoryName } from "../lib/categoryNames";
 
@@ -13,8 +14,6 @@ const STATUS_LABEL: Record<BudgetStatus, TranslationKey> = {
   approaching: "budgets.statusApproaching",
   exceeded: "budgets.statusExceeded",
 };
-
-const WARNING_OPTIONS = [50, 75, 90];
 
 export function BudgetsPage() {
   const { user } = useAuth();
@@ -299,13 +298,17 @@ function BudgetFormModal({
           <Input type="number" inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus={!editing} required />
         </Field>
         <Field label={t("budgets.warnAt")} hint={t("budgets.warnHint")}>
-          <Select value={String(warnAt)} onChange={(e) => setWarnAt(Number(e.target.value))}>
-            {WARNING_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}%
-              </option>
-            ))}
-          </Select>
+          <ThresholdPicker
+            value={warnAt}
+            onChange={setWarnAt}
+            labels={{
+              early: t("budgets.thresholdEarly"),
+              soon: t("budgets.thresholdSoon"),
+              late: t("budgets.thresholdLate"),
+              now: t("budgets.warnAt"),
+              custom: t("budgets.thresholdCustom"),
+            }}
+          />
         </Field>
         {error ? (
           <div className="error-note" role="alert">

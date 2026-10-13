@@ -590,6 +590,351 @@ textarea {
   min-height: 72px;
 }
 
+/*
+ * Date inputs: the browser paints its own placeholder ("mm/dd/yyyy") and a
+ * calendar button that can vanish in dark mode. Give the field a theme-aware
+ * colour scheme so both stay legible, and reserve room for the indicator so
+ * the value never overlaps it.
+ */
+.input[type="date"],
+.input[type="month"],
+.input[type="time"] {
+  color-scheme: light;
+  min-height: 46px;
+  padding-inline-end: 2.5rem;
+}
+
+[data-theme="dark"] .input[type="date"],
+[data-theme="dark"] .input[type="month"],
+[data-theme="dark"] .input[type="time"] {
+  color-scheme: dark;
+}
+
+/* Chrome draws the indicator as an inline SVG mask; tint it with the theme. */
+.input[type="date"]::-webkit-calendar-picker-indicator,
+.input[type="month"]::-webkit-calendar-picker-indicator,
+.input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: var(--radius-xs);
+  transition: opacity var(--speed), background-color var(--speed), transform var(--speed);
+}
+
+.input[type="date"]:hover::-webkit-calendar-picker-indicator,
+.input[type="month"]:hover::-webkit-calendar-picker-indicator,
+.input[type="time"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  background: var(--surface-2);
+}
+
+.input[type="date"]:focus-visible::-webkit-calendar-picker-indicator,
+.input[type="month"]:focus-visible::-webkit-calendar-picker-indicator,
+.input[type="time"]:focus-visible::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  transform: scale(1.12);
+}
+
+/* Firefox uses a different, non-styleable control; dim it instead. */
+.input[type="date"]::-webkit-datetime-edit,
+.input[type="month"]::-webkit-datetime-edit,
+.input[type="time"]::-webkit-datetime-edit {
+  color: var(--foreground);
+}
+
+.input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.input[type="month"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0.1rem;
+}
+
+/* The empty-value placeholder should read as muted hint text, not as a value. */
+.input[type="date"]:invalid::-webkit-datetime-edit,
+.input[type="date"]::-webkit-datetime-edit-year-field:not([data-value]) {
+  color: var(--muted);
+}
+
+/* Date field: the chosen date is spelled out under the input. */
+.date-field {
+  display: block;
+}
+
+.date-field .input[type="date"] {
+  transition: border-color var(--speed), box-shadow var(--speed), background-color var(--speed);
+}
+
+.date-hint {
+  min-height: 1.15rem;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  animation: date-hint-in var(--speed) ease;
+}
+
+.date-hint.has-value {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+@keyframes date-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Category row: destructive action stays subtle until it is hovered. */
+.category-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.category-row.is-archived {
+  opacity: 0.62;
+}
+
+.category-row.is-archived .category-name {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+
+.category-delete {
+  color: var(--muted);
+  transition: color var(--speed), background-color var(--speed);
+}
+
+.category-delete:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* ======================= Budget alert threshold ======================= */
+.threshold {
+  --tone: var(--primary);
+  --tone-soft: color-mix(in srgb, var(--primary) 14%, transparent);
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.threshold.tone-warn {
+  --tone: var(--warning);
+  --tone-soft: color-mix(in srgb, var(--warning) 16%, transparent);
+}
+
+.threshold.tone-high {
+  --tone: var(--danger);
+  --tone-soft: color-mix(in srgb, var(--danger) 16%, transparent);
+}
+
+.threshold.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.threshold-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.threshold-value {
+  font-family: var(--font-num);
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--tone);
+  transition: color var(--speed);
+}
+
+.threshold-tone {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.threshold-preview {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.threshold-fill {
+  position: relative;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--tone-soft), var(--tone));
+  transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1), background-color var(--speed);
+}
+
+/* A soft pulse marks exactly where the warning will fire. */
+.threshold-marker {
+  position: absolute;
+  inset-inline-end: -1px;
+  top: 50%;
+  width: 3px;
+  height: 160%;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--tone);
+  animation: threshold-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes threshold-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 0 var(--tone-soft);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+
+.threshold-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  gap: 0.4rem;
+}
+
+.threshold-chip {
+  --chip: var(--primary);
+  padding: 0.5rem 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--foreground);
+  font-family: var(--font-num);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--speed) ease, border-color var(--speed), background-color var(--speed), color var(--speed);
+}
+
+.threshold-chip.tone-warn {
+  --chip: var(--warning);
+}
+
+.threshold-chip.tone-high {
+  --chip: var(--danger);
+}
+
+.threshold-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--chip);
+  color: var(--chip);
+}
+
+.threshold-chip:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.threshold-chip.is-active {
+  background: var(--chip);
+  border-color: var(--chip);
+  color: var(--surface);
+  animation: threshold-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes threshold-pop {
+  0% {
+    transform: scale(0.9);
+  }
+
+  60% {
+    transform: scale(1.06);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.threshold-chip:focus-visible,
+.threshold-slider:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.threshold-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.threshold-slider-cap {
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.threshold-slider {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  appearance: none;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--tone) 0%,
+    var(--tone) var(--fill, 50%),
+    var(--surface) var(--fill, 50%),
+    var(--surface) 100%
+  );
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.threshold-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--tone);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform var(--speed) ease;
+}
+
+.threshold-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+
+.threshold-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--tone);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .threshold-marker,
+  .threshold-chip.is-active {
+    animation: none;
+  }
+
+  .threshold-fill,
+  .threshold-chip {
+    transition: none;
+  }
+}
+
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1193,9 +1538,13 @@ textarea {
   inset: 0;
   z-index: 50;
   background: rgba(8, 12, 20, 0.55);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  /* The backdrop itself scrolls, so a tall sheet is always reachable. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0;
   animation: fade var(--speed) ease;
 }
@@ -1205,8 +1554,16 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  /*
+   * `margin: auto` centres the sheet without the flexbox centring trap: a
+   * flex item taller than its container overflows past the top edge when
+   * centred with `align-items`, which makes the header unreachable.
+   */
+  margin-block: auto;
+  margin-inline: auto;
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
   animation: slide-up var(--speed-lg) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1217,8 +1574,8 @@ textarea {
   gap: 0.75rem;
   padding: 1rem;
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
+  /* Stays pinned while the body scrolls inside the sheet. */
+  flex: none;
   background: var(--surface);
   z-index: 1;
 }
@@ -1229,6 +1586,12 @@ textarea {
 
 .modal-body {
   padding: 1rem;
+  /* Only the body scrolls, so the title and the actions never scroll away. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-actions {
@@ -1272,7 +1635,15 @@ textarea {
   .modal {
     border-radius: var(--radius-lg);
     max-width: 440px;
+    /* Desktop: the whole dialog fits, so let it size to its content. */
+    max-height: min(88dvh, 760px);
     animation: pop var(--speed-lg) cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@media (min-width: 960px) {
+  .modal {
+    max-width: 520px;
   }
 }
 
