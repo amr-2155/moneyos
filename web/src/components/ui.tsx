@@ -12,6 +12,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useI18n, type TranslationKey } from "../i18n";
 import { useTheme, type ThemeMode } from "../lib/theme";
@@ -304,6 +305,16 @@ export function SkeletonBlock({ width, height }: { width?: number | string; heig
 }
 
 /* ------------------------------ Modal ------------------------------ */
+/**
+ * Renders into a portal on document.body.
+ *
+ * This is not cosmetic: `.page-enter > *` runs a `rise-in` animation that ends
+ * on `transform: translateY(0) scale(1)`. A non-`none` transform makes that
+ * element the containing block for `position: fixed` descendants, so a modal
+ * rendered in place was measured against the page box instead of the viewport
+ * and got clipped on every screen. Portalling out of the subtree sidesteps any
+ * transformed, filtered or `overflow: hidden` ancestor.
+ */
 export function Modal({
   title,
   onClose,
@@ -361,7 +372,7 @@ export function Modal({
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div
         className="modal"
@@ -377,7 +388,8 @@ export function Modal({
         </div>
         <div className="modal-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
