@@ -469,6 +469,13 @@ export const en = {
     about: "About",
     version: "Version",
   },
+  demo: {
+    title: "Try it out",
+    load: "Load sample data",
+    loading: "Loading sample data…",
+    loadHint: "Four months of realistic activity so you can see the dashboard and reports.",
+    loaded: "Loaded {count} sample transactions.",
+  },
   backup: {
     title: "Backup & Data",
     subtitle: "Export, import, or delete your data",
