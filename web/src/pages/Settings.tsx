@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CURRENCIES } from "../lib/format";
 import { useAuth, exportAllData, importAllData, exportCSV, deleteAllData } from "../lib/auth";
 import { useI18n } from "../i18n";
@@ -8,6 +8,8 @@ import { Icon } from "../components/Icon";
 import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
 import { loadDistribution, spendingPct } from "../lib/distribution";
+import { isEmptyForDemo, loadDemoData } from "../lib/demoData";
+import { haptic } from "../lib/haptics";
 import { PlanEditorModal } from "../components/PlanEditor";
 
 const APP_VERSION = "2.0.0";
@@ -25,6 +27,19 @@ export function SettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [signOutConfirm, setSignOutConfirm] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [demoAvailable, setDemoAvailable] = useState(false);
+  const [loadingDemo, setLoadingDemo] = useState(false);
+
+  // Only offer demo data while there is nothing to overwrite.
+  useEffect(() => {
+    let cancelled = false;
+    void isEmptyForDemo().then((empty) => {
+      if (!cancelled) setDemoAvailable(empty);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const distribution = loadDistribution();
@@ -106,6 +121,25 @@ export function SettingsPage() {
       show("success", t("backup.exportSuccess"));
     } catch (err) {
       show("error", getError(err, "errors.generic"));
+    }
+  }
+
+  /**
+   * Seeds a realistic month of activity so a new user can see the dashboard,
+   * trends and budgets working before entering anything themselves.
+   */
+  async function onLoadDemo() {
+    setLoadingDemo(true);
+    try {
+      const result = await loadDemoData(user?.defaultCurrency ?? "EGP");
+      haptic("success");
+      show("success", t("demo.loaded", { count: String(result.transactions) }));
+      setDemoAvailable(false);
+    } catch (err) {
+      haptic("error");
+      show("error", getError(err, "errors.generic"));
+    } finally {
+      setLoadingDemo(false);
     }
   }
 
@@ -230,6 +264,26 @@ export function SettingsPage() {
           </button>
         </div>
       </section>
+
+      {demoAvailable ? (
+        <section className="list-group" aria-label={t("demo.title")}>
+          <h2 className="list-group-title">{t("demo.title")}</h2>
+          <div className="list-group-card">
+            <button
+              type="button"
+              className="list-row"
+              disabled={loadingDemo}
+              onClick={() => void onLoadDemo()}
+            >
+              <span className="list-row-icon" aria-hidden>✨</span>
+              <span className="list-row-main">
+                <strong>{loadingDemo ? t("demo.loading") : t("demo.load")}</strong>
+                <span className="list-row-sub">{t("demo.loadHint")}</span>
+              </span>
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="list-group" aria-label={t("backup.title")}>
         <h2 className="list-group-title">{t("backup.title")}</h2>
