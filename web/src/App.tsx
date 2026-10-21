@@ -8,6 +8,7 @@ import { BudgetsPage } from "./pages/Budgets";
 import { CategoriesPage } from "./pages/Categories";
 import { HomePage } from "./pages/Home";
 import { MorePage } from "./pages/More";
+import { RecurringPage } from "./pages/Recurring";
 import { ReportsPage } from "./pages/Reports";
 import { SavingsGoalsPage } from "./pages/SavingsGoals";
 import { SettingsPage } from "./pages/Settings";
@@ -57,6 +58,7 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/add" element={<AddPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/recurring" element={<RecurringPage />} />
         <Route path="/goals" element={<SavingsGoalsPage />} />
         <Route path="/more" element={<MorePage />} />
         <Route path="/settings" element={<SettingsPage />} />

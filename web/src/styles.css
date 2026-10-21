@@ -5944,3 +5944,127 @@ button.chip:hover {
     animation: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Recurring bills & income
+   -------------------------------------------------------------------------- */
+
+.recurring-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.recurring-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.recurring-summary-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.recurring-summary-item strong {
+  font-family: var(--font-num);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recurring-row {
+  align-items: flex-start;
+}
+
+.recurring-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--expense);
+}
+
+.recurring-icon.income {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.recurring-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.recurring-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.recurring-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recurring-amount {
+  flex: none;
+  font-family: var(--font-num);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.recurring-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.recurring-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.recurring-next.is-due {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.recurring-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+@media (max-width: 560px) {
+  .recurring-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .recurring-summary-item strong {
+    font-size: 0.82rem;
+  }
+
+  .recurring-actions .badge {
+    display: none;
+  }
+}

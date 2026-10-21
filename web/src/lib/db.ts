@@ -101,6 +101,30 @@ export interface SavingsContributionRecord {
   createdAt: string;
 }
 
+/**
+ * A scheduled bill or income. The rule itself holds no transactions; due
+ * occurrences are materialised into real records so reporting stays truthful.
+ */
+export interface RecurringRuleRecord {
+  id: string;
+  userId: string;
+  name: string;
+  accountId: string;
+  categoryId: string | null;
+  type: "income" | "expense";
+  amountMinor: number;
+  currency: string;
+  frequency: "weekly" | "monthly" | "yearly";
+  /** Anchor date: the first due date, and the day every later occurrence aligns to. */
+  startDate: string;
+  endDate: string | null;
+  remindDaysBefore: number;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SyncOperation {
   operationId: string;
   entity: string;
@@ -132,6 +156,7 @@ export class MoneyOSDB extends Dexie {
   savingsGoals!: Table<SavingsGoalRecord>;
   savingsContributions!: Table<SavingsContributionRecord>;
   syncQueue!: Table<SyncOperation, string>;
+  recurringRules!: Table<RecurringRuleRecord>;
 
   constructor() {
     super(DB_NAME);
@@ -147,6 +172,9 @@ export class MoneyOSDB extends Dexie {
     });
     this.version(2).stores({
       syncQueue: "operationId, status, [status+nextRetryAt], createdAt",
+    });
+    this.version(3).stores({
+      recurringRules: "id, userId, [userId+startDate]",
     });
   }
 }
