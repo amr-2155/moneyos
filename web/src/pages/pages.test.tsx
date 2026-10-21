@@ -187,6 +187,13 @@ vi.mock("../lib/api", () => {
       archive: vi.fn(),
       contributions: { list: vi.fn(), add: vi.fn() },
     },
+    recurring: {
+      list: vi.fn(async () => []),
+      create: vi.fn(),
+      remove: vi.fn(),
+      materialise: vi.fn(async () => ({ created: 0, total: 0 })),
+      materialiseAll: vi.fn(async () => 0),
+    },
   };
 
   return { ApiError, api, getAccessToken, getRefreshToken, setTokens, clearTokens };

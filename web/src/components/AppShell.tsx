@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useI18n, type TranslationKey } from "../i18n";
+import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { CommandPalette } from "./CommandPalette";
 import { Icon, type IconName } from "./Icon";
+import { useToast } from "./Toast";
 
 interface NavItem {
   to: string;
@@ -11,6 +13,8 @@ interface NavItem {
   icon: IconName;
   end?: boolean;
   add?: boolean;
+  /** Kept out of the phone bar, which stays at five destinations. */
+  desktopOnly?: boolean;
 }
 
 const NAV: NavItem[] = [
@@ -18,6 +22,7 @@ const NAV: NavItem[] = [
   { to: "/add", label: "nav.add", icon: "plus", add: true },
   { to: "/reports", label: "nav.reports", icon: "trendup" },
   { to: "/goals", label: "nav.goals", icon: "star" },
+  { to: "/recurring", label: "nav.recurring", icon: "refresh", desktopOnly: true },
   { to: "/more", label: "nav.more", icon: "more" },
 ];
 
@@ -26,6 +31,29 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { offline } = useAuth();
   const { pathname } = useLocation();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const { show } = useToast();
+
+  // Book anything that fell due since the app was last open. Opening the app is
+  // the only reliable trigger on a host with no background jobs, and the
+  // operation is idempotent, so running it on every launch is safe.
+  useEffect(() => {
+    let cancelled = false;
+    void api.recurring
+      .materialiseAll()
+      .then((count) => {
+        if (!cancelled && count > 0) {
+          show("success", t("recurring.added", { count }));
+        }
+      })
+      .catch(() => {
+        // Recurring rules must never block the app from loading.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally once per mount: `show` and `t` are stable enough here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -102,7 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <nav className="bottomnav" aria-label={t("nav.home")}>
-        {NAV.map((item) => (
+        {NAV.filter((item) => !item.desktopOnly).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
