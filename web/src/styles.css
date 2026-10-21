@@ -5734,3 +5734,213 @@ button.chip:hover {
     transition: none !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Command palette (Ctrl/Cmd+K)
+   -------------------------------------------------------------------------- */
+
+.topbar-search {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 34px;
+  padding-inline: 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color var(--transition-default), color var(--transition-default), background var(--transition-default);
+}
+
+.topbar-search:hover {
+  color: var(--foreground);
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.topbar-search-label,
+.topbar-search-kbd {
+  display: none;
+}
+
+.topbar-search-kbd {
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: var(--font-num);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  .topbar-search-label {
+    display: inline;
+  }
+
+  .topbar-search-kbd {
+    display: inline-block;
+  }
+}
+
+.cmdk-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(0.75rem, 9vh, 6rem) 1rem 1rem;
+  background: rgba(8, 12, 20, 0.5);
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+}
+
+.cmdk {
+  width: min(620px, 100%);
+  display: flex;
+  flex-direction: column;
+  max-height: min(70dvh, 620px);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: pop var(--speed-lg) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cmdk-search {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-block-end: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.cmdk-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+
+.cmdk-input::placeholder {
+  color: var(--muted);
+}
+
+.cmdk-kbd {
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-family: var(--font-num);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.cmdk-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.4rem;
+  overscroll-behavior: contain;
+}
+
+.cmdk-group {
+  margin: 0.55rem 0.6rem 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cmdk-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: start;
+  cursor: pointer;
+}
+
+.cmdk-item > svg {
+  color: var(--muted);
+  flex: none;
+}
+
+.cmdk-item.active {
+  background: var(--primary-soft);
+}
+
+.cmdk-item.active > svg {
+  color: var(--primary);
+}
+
+.cmdk-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmdk-item-hint {
+  flex: none;
+  font-family: var(--font-num);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.cmdk-empty {
+  margin: 2rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.cmdk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 1rem;
+  border-block-start: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.cmdk-footer kbd {
+  display: inline-block;
+  min-width: 18px;
+  margin-inline-end: 2px;
+  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: var(--font-num);
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmdk {
+    animation: none;
+  }
+}
