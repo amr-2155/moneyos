@@ -1,7 +1,8 @@
-import { type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useI18n, type TranslationKey } from "../i18n";
 import { useAuth } from "../lib/auth";
+import { CommandPalette } from "./CommandPalette";
 import { Icon, type IconName } from "./Icon";
 
 interface NavItem {
@@ -24,9 +25,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const { offline } = useAuth();
   const { pathname } = useLocation();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <div className="app-shell">
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <aside className="sidebar">
         <Link to="/" className="brand" onClick={(e) => e.currentTarget.blur()}>
           <span className="brand-mark">
@@ -68,6 +82,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             {t("nav.offline")}
           </span>
         ) : null}
+        <button
+          type="button"
+          className="topbar-search"
+          onClick={() => setPaletteOpen(true)}
+          aria-label={t("command.open")}
+          title={`${t("command.open")} · ${t("command.shortcut")}`}
+        >
+          <Icon name="search" size={16} />
+          <span className="topbar-search-label">{t("command.hint")}</span>
+          <kbd className="topbar-search-kbd">{t("command.shortcut")}</kbd>
+        </button>
       </header>
 
       <main className="app-main">
