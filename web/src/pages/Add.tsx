@@ -10,6 +10,7 @@ import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
 import { transactionCategoryOptions } from "../lib/transactions";
 import { categoryEmoji, localizeCategoryName } from "../lib/categoryNames";
+import { useCategorySuggestion } from "../lib/useCategorySuggestion";
 
 type TxType = "income" | "expense";
 
@@ -88,6 +89,11 @@ export function AddPage() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  /**
+   * Once the user picks a category themselves, suggestions stop overriding it.
+   * Without this the form would fight the user on every keystroke.
+   */
+  const [categoryTouched, setCategoryTouched] = useState(Boolean(editingTx));
 
   const [showNote, setShowNote] = useState(Boolean(editingTx?.notes || editingTx?.description));
 
@@ -142,6 +148,18 @@ export function AddPage() {
       .slice(0, 2);
   }, [note, categoryId, categoryOptions, locale]);
 
+  const { match: autoMatch } = useCategorySuggestion({
+    description: note,
+    type,
+    enabled: !categoryTouched && categoryOptions.length > 0,
+  });
+
+  useEffect(() => {
+    if (!autoMatch || categoryTouched) return;
+    if (!categoryOptions.some((category) => category.id === autoMatch.categoryId)) return;
+    setCategoryId((current) => (current === autoMatch.categoryId ? current : autoMatch.categoryId));
+  }, [autoMatch, categoryOptions, categoryTouched]);
+
   function groupedAmount(raw: string): string {
     const [int, frac] = raw.split(".");
     const parts = new Intl.NumberFormat(locale).formatToParts(1234567);
@@ -155,6 +173,7 @@ export function AddPage() {
     if (editingTx || next === type) return;
     setType(next);
     setCategoryId("");
+    setCategoryTouched(false);
     setPickerOpen(false);
     setSearch("");
     setAmountError(null);
@@ -167,6 +186,7 @@ export function AddPage() {
 
   function pickCategory(cat: CategoryView) {
     setCategoryId(cat.id);
+    setCategoryTouched(true);
     saveRecentCat(cat.id);
     setPickerOpen(false);
     setError(null);
@@ -238,6 +258,10 @@ export function AddPage() {
         await api.transactions.reverse(editingTx.id);
       }
       await api.transactions.create(body);
+      // Fire and forget: learning must never block or fail a save.
+      void api.categoryRules
+        .learn({ description: note, categoryId, type })
+        .catch(() => undefined);
       setSaving(false);
       const amtDisplay = `${groupedAmount(amount)} ${currencyLabel(currencyCode)}`;
       const typeLabel = type === "income" ? t("add.income") : t("add.expense");
@@ -349,6 +373,23 @@ export function AddPage() {
                 </span>
                 <Icon name="chevron-down" size={18} className="add-cat-btn-chevron" />
               </button>
+
+              {autoMatch && !categoryTouched && categoryId === autoMatch.categoryId ? (
+                <p className="cat-auto-hint">
+                  <Icon name="sparkles" size={14} />
+                  <span>{t("add.autoCategory", { pattern: autoMatch.pattern })}</span>
+                  <button
+                    type="button"
+                    className="link"
+                    onClick={() => {
+                      setCategoryTouched(true);
+                      setPickerOpen(true);
+                    }}
+                  >
+                    {t("add.change")}
+                  </button>
+                </p>
+              ) : null}
 
               {/* Most used */}
               {!pickerOpen && recentCategories.length > 0 && !categoryId && (

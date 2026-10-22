@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useI18n, type TranslationKey } from "../i18n";
 import { api, type TransactionView } from "../lib/api";
 import { formatCurrency, formatDate } from "../lib/format";
+import { foldText } from "../lib/text";
 import { useTheme } from "../lib/theme";
 import { Icon, type IconName } from "./Icon";
 
@@ -41,17 +42,7 @@ const GROUP_ORDER: Group[] = ["pages", "actions", "transactions"];
  * Folds the differences that make Arabic search feel broken: diacritics,
  * tatweel, and the alternate letter forms people type interchangeably.
  */
-function normalize(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u064B-\u0652\u0670\u0640]/g, "")
-    .replace(/[\u0623\u0625\u0622]/g, "\u0627")
-    .replace(/\u0649/g, "\u064A")
-    .replace(/\u0629/g, "\u0647")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+const normalize = foldText;
 
 /** Lower is better; `-1` means "does not match". */
 function score(haystack: string, tokens: string[]): number {

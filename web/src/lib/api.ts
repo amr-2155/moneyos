@@ -1,7 +1,8 @@
-import { db, uid, type UserRecord, type AccountRecord, type CategoryRecord, type TransactionRecord, type TransferRecord, type BudgetRecord, type SavingsGoalRecord, type SavingsContributionRecord, type RecurringRuleRecord } from "./db";
+import { db, uid, type UserRecord, type AccountRecord, type CategoryRecord, type TransactionRecord, type TransferRecord, type BudgetRecord, type SavingsGoalRecord, type SavingsContributionRecord, type RecurringRuleRecord, type CategoryRuleRecord } from "./db";
 import { enqueueSync, toSyncPayload, type SyncEntityType, type SyncOperationType } from "./sync";
 import { parseAmountToMinor } from "./money";
 import { nextOccurrence, pendingOccurrences, reminderDate, today, type Frequency as RecurringFrequency } from "./recurring";
+import { normalizePattern, planLearning } from "./categorization";
 import {
   clearCachedSession,
   currentUserId,
@@ -144,6 +145,18 @@ export interface CategoryView {
   color: string | null;
   system: boolean;
   isArchived: boolean;
+}
+
+export interface CategoryRuleView {
+  id: string;
+  pattern: string;
+  categoryId: string;
+  categoryName: string;
+  type: CategoryRuleRecord["type"];
+  hits: number;
+  source: CategoryRuleRecord["source"];
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface TransactionView {
@@ -969,6 +982,154 @@ export const api = {
     restoreDeleted: async (record: CategoryRecord): Promise<void> => {
       await db.categories.put(record);
       void queueSync("category", "CREATE", record.id, record);
+    },
+  },
+
+  /**
+   * Rules that map a word from the description to a category. They are learned
+   * from what the user actually picks, so no setup is required to get value.
+   */
+  categoryRules: {
+    list: async (): Promise<CategoryRuleView[]> => {
+      const records = await db.categoryRules
+        .where("userId")
+        .equals(currentUserId())
+        .toArray();
+
+      const views: CategoryRuleView[] = [];
+      for (const record of records) {
+        const category = await db.categories.get(record.categoryId);
+        views.push({
+          id: record.id,
+          pattern: record.pattern,
+          categoryId: record.categoryId,
+          categoryName: category?.name ?? "Unknown",
+          type: record.type,
+          hits: record.hits,
+          source: record.source,
+          isActive: record.isActive,
+          createdAt: record.createdAt,
+        });
+      }
+
+      return views.sort(
+        (a, b) => b.hits - a.hits || a.pattern.localeCompare(b.pattern, "ar"),
+      );
+    },
+
+    create: async (body: {
+      pattern: string;
+      categoryId: string;
+      type: CategoryRuleRecord["type"];
+    }): Promise<CategoryRuleRecord> => {
+      const pattern = normalizePattern(body.pattern);
+      if (pattern.length < 3) {
+        throw new ApiError("Rule needs at least 3 characters", 400, "RULE_TOO_SHORT");
+      }
+      const category = await db.categories.get(body.categoryId);
+      if (!category || category.userId !== currentUserId()) {
+        throw new ApiError("Category not found", 404, "NOT_FOUND");
+      }
+
+      const now = new Date().toISOString();
+      const existing = await db.categoryRules
+        .where("[userId+pattern]")
+        .equals([currentUserId(), pattern])
+        .first();
+
+      const record: CategoryRuleRecord = existing
+        ? { ...existing, categoryId: body.categoryId, isActive: true, updatedAt: now }
+        : {
+            id: uid(),
+            userId: currentUserId(),
+            pattern,
+            categoryId: body.categoryId,
+            type: body.type,
+            hits: 0,
+            source: "user",
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+      await db.categoryRules.put(record);
+      void queueSync("categoryRule", "UPDATE", record.id, record);
+      return record;
+    },
+
+    setActive: async (id: string, isActive: boolean): Promise<void> => {
+      const record = await db.categoryRules.get(id);
+      if (!record || record.userId !== currentUserId()) {
+        throw new ApiError("Rule not found", 404, "NOT_FOUND");
+      }
+      record.isActive = isActive;
+      record.updatedAt = new Date().toISOString();
+      await db.categoryRules.put(record);
+      void queueSync("categoryRule", "UPDATE", record.id, record);
+    },
+
+    remove: async (id: string): Promise<CategoryRuleRecord> => {
+      const record = await db.categoryRules.get(id);
+      if (!record || record.userId !== currentUserId()) {
+        throw new ApiError("Rule not found", 404, "NOT_FOUND");
+      }
+      await db.categoryRules.delete(id);
+      void queueSync("categoryRule", "DELETE", id, { id });
+      return record;
+    },
+
+    /** Puts a just-deleted rule back. Used by undo. */
+    restore: async (record: CategoryRuleRecord): Promise<void> => {
+      await db.categoryRules.put(record);
+      void queueSync("categoryRule", "CREATE", record.id, record);
+    },
+
+    /**
+     * Teaches the engine from a saved transaction: confirms the rule when the
+     * user kept our suggestion, moves it when they corrected us.
+     */
+    learn: async (input: {
+      description: string;
+      categoryId: string;
+      type: "expense" | "income";
+    }): Promise<void> => {
+      const rules = await db.categoryRules
+        .where("userId")
+        .equals(currentUserId())
+        .toArray();
+      const plan = planLearning(input.description, input.categoryId, input.type, rules);
+      if (!plan) return;
+
+      const now = new Date().toISOString();
+
+      if (plan.kind === "create") {
+        const record: CategoryRuleRecord = {
+          id: uid(),
+          userId: currentUserId(),
+          pattern: plan.pattern,
+          categoryId: plan.categoryId,
+          type: plan.type,
+          hits: 1,
+          source: "learned",
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.categoryRules.put(record);
+        void queueSync("categoryRule", "CREATE", record.id, record);
+        return;
+      }
+
+      const stored = await db.categoryRules.get(plan.rule.id);
+      if (!stored) return;
+
+      const next: CategoryRuleRecord =
+        plan.kind === "move"
+          ? { ...stored, categoryId: plan.categoryId, hits: stored.hits + 1, updatedAt: now }
+          : { ...stored, hits: stored.hits + 1, updatedAt: now };
+
+      await db.categoryRules.put(next);
+      void queueSync("categoryRule", "UPDATE", next.id, next);
     },
   },
 

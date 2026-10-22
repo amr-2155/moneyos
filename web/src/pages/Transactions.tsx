@@ -12,6 +12,7 @@ import { DateField } from "../components/DateField";
 import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
 import { localizeCategoryName } from "../lib/categoryNames";
+import { useCategorySuggestion } from "../lib/useCategorySuggestion";
 
 const PAGE_SIZE = 30;
 
@@ -209,6 +210,7 @@ function TransactionFormModal({ onClose, onSaved }: { onClose: () => void; onSav
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [categoryTouched, setCategoryTouched] = useState(false);
   const [accountId, setAccountId] = useState("");
   const [fromAccountId, setFromAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
@@ -246,6 +248,18 @@ function TransactionFormModal({ onClose, onSaved }: { onClose: () => void; onSav
   const selectedAccount = accounts.find((a) => a.id === (type === "transfer" ? fromAccountId : accountId));
   const currencyCode = selectedAccount?.currency ?? accounts[0]?.currency ?? "USD";
 
+  const { match: autoMatch } = useCategorySuggestion({
+    description: `${description} ${notes}`.trim(),
+    type: type === "transfer" ? "expense" : type,
+    enabled: type !== "transfer" && !categoryTouched && categoryOptions.length > 0,
+  });
+
+  useEffect(() => {
+    if (!autoMatch || categoryTouched) return;
+    if (!categoryOptions.some((category) => category.id === autoMatch.categoryId)) return;
+    setCategoryId((current) => (current === autoMatch.categoryId ? current : autoMatch.categoryId));
+  }, [autoMatch, categoryOptions, categoryTouched]);
+
   const amountValid = amount.trim() !== "" && Number(amount) > 0;
 
   async function onSubmit(event: React.FormEvent) {
@@ -278,6 +292,9 @@ function TransactionFormModal({ onClose, onSaved }: { onClose: () => void; onSav
           description: description || undefined,
           notes: notes || undefined,
         });
+        void api.categoryRules
+          .learn({ description: description || notes, categoryId, type })
+          .catch(() => undefined);
         show("success", t("transactions.created"));
       }
       onSaved();
@@ -359,7 +376,14 @@ function TransactionFormModal({ onClose, onSaved }: { onClose: () => void; onSav
                 </Select>
               </Field>
               <Field label={t("common.category")}>
-                <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+                <Select
+                  value={categoryId}
+                  onChange={(e) => {
+                    setCategoryId(e.target.value);
+                    setCategoryTouched(true);
+                  }}
+                  required
+                >
                   <option value="">{t("common.select")}</option>
                   {categoryOptions.map((category) => (
                     <option key={category.id} value={category.id}>

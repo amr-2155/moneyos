@@ -206,6 +206,12 @@ const paths: Record<string, React.ReactNode> = {
       <circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none" />
     </>
   ),
+  sparkles: (
+    <>
+      <path d="M12 3.5 13.6 8 18 9.6 13.6 11.2 12 15.7 10.4 11.2 6 9.6 10.4 8 12 3.5Z" />
+      <path d="M18.5 15 19.4 17.3 21.7 18.2 19.4 19.1 18.5 21.4 17.6 19.1 15.3 18.2 17.6 17.3 18.5 15Z" />
+    </>
+  ),
   "external-link": (
     <>
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
