@@ -4,6 +4,7 @@ import { useI18n, type TranslationKey } from "../i18n";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { CommandPalette } from "./CommandPalette";
+import { AlertsBell } from "./AlertsBell";
 import { Icon, type IconName } from "./Icon";
 import { useToast } from "./Toast";
 
@@ -121,6 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="topbar-search-label">{t("command.hint")}</span>
           <kbd className="topbar-search-kbd">{t("command.shortcut")}</kbd>
         </button>
+        <AlertsBell />
       </header>
 
       <main className="app-main">

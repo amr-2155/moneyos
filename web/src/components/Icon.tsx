@@ -129,6 +129,12 @@ const paths: Record<string, React.ReactNode> = {
       <path d="M12 7v5l3 2" />
     </>
   ),
+  bell: (
+    <>
+      <path d="M18 8a6 6 0 1 0-12 0c0 6-3 7-3 7h18s-3-1-3-7" />
+      <path d="M10.3 20a2 2 0 0 0 3.4 0" />
+    </>
+  ),
   refresh: (
     <>
       <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5" />
