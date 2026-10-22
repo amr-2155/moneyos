@@ -3,17 +3,34 @@ import { Icon, type IconName } from "./Icon";
 
 type ToastKind = "success" | "error";
 
+/** A single reversible follow-up shown inside the toast (e.g. "Undo"). */
+export interface ToastAction {
+  label: string;
+  onAction: () => void;
+}
+
+export interface ToastOptions {
+  action?: ToastAction;
+  /** Overrides the lifetime; actionable toasts default to a longer window. */
+  duration?: number;
+}
+
 interface ToastItem {
   id: number;
   kind: ToastKind;
   message: string;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
-  show: (kind: ToastKind, message: string) => void;
+  show: (kind: ToastKind, message: string, options?: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
+
+const DEFAULT_DURATION = 4000;
+/** Reversible toasts need long enough to actually be read and clicked. */
+const ACTION_DURATION = 7000;
 
 let nextId = 1;
 
@@ -31,10 +48,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const show = useCallback(
-    (kind: ToastKind, message: string) => {
+    (kind: ToastKind, message: string, options?: ToastOptions) => {
       const id = nextId++;
-      setToasts((prev) => [...prev.slice(-2), { id, kind, message }]);
-      const timer = setTimeout(() => dismiss(id), 4000);
+      setToasts((prev) => [...prev.slice(-2), { id, kind, message, action: options?.action }]);
+      const duration = options?.duration ?? (options?.action ? ACTION_DURATION : DEFAULT_DURATION);
+      const timer = setTimeout(() => dismiss(id), duration);
       timers.current.set(id, timer);
     },
     [dismiss],
@@ -52,6 +70,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <div key={toast.id} className={`toast toast-${toast.kind}`}>
             <Icon name={icons[toast.kind]} />
             <span>{toast.message}</span>
+            {toast.action ? (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => {
+                  toast.action?.onAction();
+                  dismiss(toast.id);
+                }}
+              >
+                {toast.action.label}
+              </button>
+            ) : null}
           </div>
         ))}
       </div>

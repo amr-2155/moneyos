@@ -23,6 +23,7 @@ export const ar: EnMessages = {
     archive: "أرشفة",
     delete: "حذف",
     restore: "استرجاع",
+    undo: "تراجع",
     activate: "تفعيل",
     save: "حفظ",
     saving: "جارٍ الحفظ…",

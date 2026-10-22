@@ -83,9 +83,22 @@ export function RecurringPage() {
     setDeleting(true);
     api.recurring
       .remove(deleteTarget.id)
-      .then(() => {
+      .then((removed) => {
         haptic("medium");
-        show("success", t("recurring.deleted"));
+        show("success", t("recurring.deleted"), {
+          action: {
+            label: t("common.undo"),
+            onAction: () => {
+              api.recurring
+                .restore(removed)
+                .then(() => {
+                  show("success", t("common.restore"));
+                  load();
+                })
+                .catch((err) => show("error", getError(err, "errors.generic")));
+            },
+          },
+        });
         setDeleteTarget(null);
         setDeleting(false);
         load();

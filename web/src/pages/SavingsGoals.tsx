@@ -4,7 +4,7 @@ import { CURRENCIES, formatCurrency, formatDateLong, formatMonth, minorToDecimal
 import { DateField } from "../components/DateField";
 import { useAuth } from "../lib/auth";
 import { useI18n } from "../i18n";
-import { AnimatedNumber, Badge, Button, ConfirmDialog, EmptyState, Field, FieldRow, Input, Modal, PageHeader, ProgressBar, Select, SkeletonCard } from "../components/ui";
+import { AnimatedNumber, Badge, Button, EmptyState, Field, FieldRow, Input, Modal, PageHeader, ProgressBar, Select, SkeletonCard } from "../components/ui";
 import { Icon } from "../components/Icon";
 import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
@@ -19,7 +19,6 @@ export function SavingsGoalsPage() {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SavingsGoalView | null>(null);
-  const [archiveTarget, setArchiveTarget] = useState<SavingsGoalView | null>(null);
   const [contributingTo, setContributingTo] = useState<SavingsGoalView | null>(null);
 
   const load = useCallback(() => {
@@ -32,15 +31,28 @@ export function SavingsGoalsPage() {
 
   useEffect(() => load(), [load]);
 
-  function onArchived() {
-    if (!archiveTarget) {
-      return;
-    }
+  /**
+   * Archiving is reversible, so it runs immediately and the toast offers an
+   * undo instead of interrupting the user with a confirm dialog.
+   */
+  function onArchive(goal: SavingsGoalView) {
     api.savingsGoals
-      .archive(archiveTarget.id)
+      .archive(goal.id)
       .then(() => {
-        show("success", t("savings.archived"));
-        setArchiveTarget(null);
+        show("success", t("savings.archived"), {
+          action: {
+            label: t("common.undo"),
+            onAction: () => {
+              api.savingsGoals
+                .restore(goal.id)
+                .then(() => {
+                  show("success", t("common.restore"));
+                  load();
+                })
+                .catch((err) => show("error", getError(err, "errors.generic")));
+            },
+          },
+        });
         load();
       })
       .catch((err) => show("error", getError(err, "errors.generic")));
@@ -128,7 +140,7 @@ export function SavingsGoalsPage() {
                 <Button variant="ghost" size="sm" icon="edit" onClick={() => setEditing(goal)}>
                   {t("common.edit")}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setArchiveTarget(goal)}>
+                <Button variant="ghost" size="sm" onClick={() => onArchive(goal)}>
                   {t("common.archive")}
                 </Button>
               </div>
@@ -158,18 +170,6 @@ export function SavingsGoalsPage() {
             setContributingTo(null);
             load();
           }}
-        />
-      ) : null}
-
-      {archiveTarget ? (
-        <ConfirmDialog
-          title={t("savings.archiveTitle")}
-          message={t("savings.archiveConfirm", { name: archiveTarget.name })}
-          confirmLabel={t("actions.confirm")}
-          cancelLabel={t("actions.cancel")}
-          tone="danger"
-          onConfirm={() => void onArchived()}
-          onCancel={() => setArchiveTarget(null)}
         />
       ) : null}
     </div>

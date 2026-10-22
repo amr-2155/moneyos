@@ -3,7 +3,7 @@ import { api, type BudgetStatus, type BudgetView, type CategoryView } from "../l
 import { currentMonth, formatCurrency, minorToDecimal } from "../lib/format";
 import { useAuth } from "../lib/auth";
 import { useI18n, type TranslationKey } from "../i18n";
-import { AnimatedNumber, Badge, Button, ConfirmDialog, EmptyState, Field, Input, Modal, PageHeader, ProgressBar, Select, SkeletonCard, StatCard } from "../components/ui";
+import { AnimatedNumber, Badge, Button, EmptyState, Field, Input, Modal, PageHeader, ProgressBar, Select, SkeletonCard, StatCard } from "../components/ui";
 import { useToast } from "../components/Toast";
 import { ThresholdPicker } from "../components/ThresholdPicker";
 import { useErrorMessage } from "../lib/errors";
@@ -26,7 +26,6 @@ export function BudgetsPage() {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<BudgetView | null>(null);
-  const [archiveTarget, setArchiveTarget] = useState<BudgetView | null>(null);
 
   const load = useCallback(() => {
     setError(null);
@@ -52,15 +51,28 @@ export function BudgetsPage() {
     };
   }, [budgets]);
 
-  function onArchived() {
-    if (!archiveTarget) {
-      return;
-    }
+  /**
+   * Archiving is reversible, so it runs immediately and the toast offers an
+   * undo instead of interrupting the user with a confirm dialog.
+   */
+  function onArchive(budget: BudgetView) {
     api.budgets
-      .archive(archiveTarget.id)
+      .archive(budget.id)
       .then(() => {
-        show("success", t("budgets.archived"));
-        setArchiveTarget(null);
+        show("success", t("budgets.archived"), {
+          action: {
+            label: t("common.undo"),
+            onAction: () => {
+              api.budgets
+                .restore(budget.id)
+                .then(() => {
+                  show("success", t("common.restore"));
+                  load();
+                })
+                .catch((err) => show("error", getError(err, "errors.generic")));
+            },
+          },
+        });
         load();
       })
       .catch((err) => show("error", getError(err, "errors.generic")));
@@ -154,9 +166,9 @@ export function BudgetsPage() {
                       >
                         {t("common.edit")}
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setArchiveTarget(budget)}>
-                        {t("common.archive")}
-                      </Button>
+          <Button variant="ghost" size="sm" onClick={() => onArchive(budget)}>
+            {t("common.archive")}
+          </Button>
                     </div>
                   </li>
                 );
@@ -178,18 +190,6 @@ export function BudgetsPage() {
             setEditing(null);
             load();
           }}
-        />
-      ) : null}
-
-      {archiveTarget ? (
-        <ConfirmDialog
-          title={t("budgets.archiveTitle")}
-          message={t("budgets.archiveConfirm", { category: localizeCategoryName(archiveTarget.categoryName, locale) })}
-          confirmLabel={t("actions.confirm")}
-          cancelLabel={t("actions.cancel")}
-          tone="danger"
-          onConfirm={() => void onArchived()}
-          onCancel={() => setArchiveTarget(null)}
         />
       ) : null}
     </div>
