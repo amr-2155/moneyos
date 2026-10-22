@@ -192,4 +192,31 @@ describe("recurring rules", () => {
     expect(await db.recurringRules.get(rule.id)).toBeUndefined();
     expect((await linkedTransactions()).length).toBe(before);
   });
+
+  it("returns the removed rule so undo can put it back exactly as it was", async () => {
+    const rule = await createRule({ name: "Internet", amount: "350" });
+
+    const removed = await api.recurring.remove(rule.id);
+    expect(removed.id).toBe(rule.id);
+    expect(removed.name).toBe("Internet");
+
+    await api.recurring.restore(removed);
+
+    const [restored] = await api.recurring.list();
+    expect(restored?.id).toBe(rule.id);
+    expect(restored?.name).toBe("Internet");
+    expect(restored?.amountMinor).toBe(35_000);
+  });
+
+  it("does not book a duplicate occurrence after a rule is restored", async () => {
+    const rule = await createRule();
+    await api.recurring.materialise(rule.id);
+    const before = (await linkedTransactions()).length;
+
+    const removed = await api.recurring.remove(rule.id);
+    await api.recurring.restore(removed);
+    await api.recurring.materialise(rule.id);
+
+    expect((await linkedTransactions()).length).toBe(before);
+  });
 });

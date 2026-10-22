@@ -935,10 +935,10 @@ export const api = {
         .equals(id)
         .filter((tx) => tx.userId === currentUserId())
         .count();
+      // budgets only indexes the pair [userId+categoryId], not categoryId alone.
       const budgets = await db.budgets
-        .where("categoryId")
-        .equals(id)
-        .filter((budget) => budget.userId === currentUserId())
+        .where("[userId+categoryId]")
+        .equals([currentUserId(), id])
         .count();
       return { transactions, budgets };
     },
@@ -946,8 +946,10 @@ export const api = {
     /**
      * Permanently removes a category. Refuses while anything still references
      * it, so financial records are never orphaned.
+     *
+     * Returns the deleted record so the caller can offer an undo.
      */
-    remove: async (id: string): Promise<void> => {
+    remove: async (id: string): Promise<CategoryRecord> => {
       const record = await db.categories.get(id);
       if (!record) throw new ApiError("Category not found", 404, "NOT_FOUND");
       const { transactions, budgets } = await api.categories.usage(id);
@@ -960,6 +962,13 @@ export const api = {
       }
       await db.categories.delete(id);
       void queueSync("category", "DELETE", id, { id });
+      return record;
+    },
+
+    /** Puts a just-deleted category back, unchanged. Used by undo. */
+    restoreDeleted: async (record: CategoryRecord): Promise<void> => {
+      await db.categories.put(record);
+      void queueSync("category", "CREATE", record.id, record);
     },
   },
 
@@ -1168,13 +1177,21 @@ export const api = {
       return created;
     },
 
-    remove: async (id: string): Promise<void> => {
+    /** Returns the removed rule so the caller can offer an undo. */
+    remove: async (id: string): Promise<RecurringRuleRecord> => {
       const rule = await db.recurringRules.get(id);
       if (!rule || rule.userId !== currentUserId()) {
         throw new ApiError("Recurring rule not found", 404, "NOT_FOUND");
       }
       await db.recurringRules.delete(id);
       void queueSync("recurringRule", "DELETE", id, { id });
+      return rule;
+    },
+
+    /** Puts a just-deleted rule back, unchanged. Used by undo. */
+    restore: async (record: RecurringRuleRecord): Promise<void> => {
+      await db.recurringRules.put(record);
+      void queueSync("recurringRule", "CREATE", record.id, record);
     },
   },
 
@@ -1593,6 +1610,16 @@ export const api = {
         updatedAt: record.updatedAt,
       };
     },
+
+    /** Un-archives a budget. Used by undo after an archive. */
+    restore: async (id: string): Promise<void> => {
+      const record = await db.budgets.get(id);
+      if (!record) throw new ApiError("Budget not found", 404, "NOT_FOUND");
+      record.isArchived = false;
+      record.updatedAt = new Date().toISOString();
+      await db.budgets.put(record);
+      void queueSync("budget", "UPDATE", record.id, record);
+    },
   },
 
   savingsGoals: {
@@ -1753,6 +1780,16 @@ export const api = {
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
       };
+    },
+
+    /** Un-archives a savings goal. Used by undo after an archive. */
+    restore: async (id: string): Promise<void> => {
+      const record = await db.savingsGoals.get(id);
+      if (!record) throw new ApiError("Savings goal not found", 404, "NOT_FOUND");
+      record.isArchived = false;
+      record.updatedAt = new Date().toISOString();
+      await db.savingsGoals.put(record);
+      void queueSync("savingsGoal", "UPDATE", record.id, record);
     },
 
     contributions: {

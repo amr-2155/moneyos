@@ -15,9 +15,7 @@ export function CategoriesPage() {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryView | null>(null);
-  const [archiveTarget, setArchiveTarget] = useState<CategoryView | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<CategoryView | null>(null);
-  const [usage, setUsage] = useState<{ transactions: number; budgets: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CategoryView | null>(null);  const [usage, setUsage] = useState<{ transactions: number; budgets: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -31,15 +29,28 @@ export function CategoriesPage() {
 
   useEffect(() => load(), [load]);
 
-  function onArchived() {
-    if (!archiveTarget) {
-      return;
-    }
+  /**
+   * Archiving is reversible, so it runs immediately and the toast offers an
+   * undo instead of interrupting the user with a confirm dialog.
+   */
+  function onArchive(category: CategoryView) {
     api.categories
-      .archive(archiveTarget.id)
+      .archive(category.id)
       .then(() => {
-        show("success", t("categories.archived"));
-        setArchiveTarget(null);
+        show("success", t("categories.archived"), {
+          action: {
+            label: t("common.undo"),
+            onAction: () => {
+              api.categories
+                .restore(category.id)
+                .then(() => {
+                  show("success", t("categories.restored"));
+                  load();
+                })
+                .catch((err) => show("error", getError(err, "errors.generic")));
+            },
+          },
+        });
         load();
       })
       .catch((err) => show("error", getError(err, "errors.generic")));
@@ -65,8 +76,21 @@ export function CategoriesPage() {
     setDeleting(true);
     api.categories
       .remove(deleteTarget.id)
-      .then(() => {
-        show("success", t("categories.deleted"));
+      .then((removed) => {
+        show("success", t("categories.deleted"), {
+          action: {
+            label: t("common.undo"),
+            onAction: () => {
+              api.categories
+                .restoreDeleted(removed)
+                .then(() => {
+                  show("success", t("common.restore"));
+                  load();
+                })
+                .catch((err) => show("error", getError(err, "errors.generic")));
+            },
+          },
+        });
         setDeleteTarget(null);
         setUsage(null);
         setDeleting(false);
@@ -121,7 +145,7 @@ export function CategoriesPage() {
             {t("common.restore")}
           </Button>
         ) : (
-          <Button variant="ghost" size="sm" onClick={() => setArchiveTarget(category)}>
+          <Button variant="ghost" size="sm" onClick={() => onArchive(category)}>
             {t("common.archive")}
           </Button>
         )}
@@ -210,18 +234,6 @@ export function CategoriesPage() {
             setEditing(null);
             load();
           }}
-        />
-      ) : null}
-
-      {archiveTarget ? (
-        <ConfirmDialog
-          title={t("categories.archiveTitle")}
-          message={t("categories.archiveConfirm", { name: localizeCategoryName(archiveTarget.name, locale) })}
-          confirmLabel={t("actions.confirm")}
-          cancelLabel={t("actions.cancel")}
-          tone="danger"
-          onConfirm={() => void onArchived()}
-          onCancel={() => setArchiveTarget(null)}
         />
       ) : null}
 

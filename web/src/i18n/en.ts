@@ -21,6 +21,7 @@ export const en = {
     archive: "Archive",
     delete: "Delete",
     restore: "Restore",
+    undo: "Undo",
     activate: "Activate",
     save: "Save",
     saving: "Saving…",
