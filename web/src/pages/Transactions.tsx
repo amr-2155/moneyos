@@ -7,6 +7,7 @@ import { useI18n } from "../i18n";
 import { Button, ConfirmDialog, EmptyState, Field, FieldRow, IconButton, Input, Modal, PageHeader, SegmentedControl, Select, SkeletonCard } from "../components/ui";
 import { Icon } from "../components/Icon";
 import { TransactionItem } from "../components/TransactionItem";
+import { RelativeDay } from "../components/RelativeDay";
 import { DateField } from "../components/DateField";
 import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
@@ -120,7 +121,10 @@ export function TransactionsPage() {
           {filteredGrouped.map(([date, txs]) => (
             <section className="card" key={date} aria-label={formatDate(date)}>
               <div className="card-header">
-                <h2>{formatDate(date)}</h2>
+                <h2>
+                  {formatDate(date)}
+                  <RelativeDay date={date} />
+                </h2>
               </div>
               <ul className="list">
                 {txs.map((tx) => (
@@ -128,6 +132,7 @@ export function TransactionsPage() {
                     key={tx.id}
                     tx={tx}
                     subtitle={tx.reversedAt ? t("transactions.deletedBadge") : undefined}
+                    showRelative={false}
                     actions={
                       !tx.reversedAt && !tx.transferId ? (
                         <>
