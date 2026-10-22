@@ -1353,14 +1353,74 @@ textarea {
 }
 
 .tx-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
   font-size: 0.78rem;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.tx-amount {
+.tx-sub-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-sep {
+  flex: none;
+  opacity: 0.55;
+}
+
+/*
+ * Elapsed-time chip. Quiet by design: it is context on a record, not an
+ * action, so it stays in muted small type with a barely-there pill and a
+ * single soft fade-in rather than pulsing for attention.
+ */
+.rel-day {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  animation: rel-day-in 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.rel-day + .rel-day {
+  margin-inline-start: 0.35rem;
+}
+
+@keyframes rel-day-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* A gentle cascade so a list of rows does not all fade at the same instant. */
+.list-item:nth-child(2) .rel-day { animation-delay: 0.05s; }
+.list-item:nth-child(3) .rel-day { animation-delay: 0.1s; }
+.list-item:nth-child(4) .rel-day { animation-delay: 0.15s; }
+.list-item:nth-child(5) .rel-day { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rel-day {
+    animation: none;
+  }
+}.tx-amount {
   font-weight: 700;
   font-size: 0.93rem;
   font-family: var(--font-num);
@@ -2655,6 +2715,10 @@ textarea {
 }
 
 .card-header h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
   font-size: 1rem;
 }
 
