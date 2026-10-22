@@ -125,6 +125,25 @@ export interface RecurringRuleRecord {
   updatedAt: string;
 }
 
+/**
+ * A learned or hand-made rule mapping a word from the description to a
+ * category, e.g. "كارفور" → Groceries. Patterns are stored already folded, so
+ * matching does not have to re-normalise every keystroke.
+ */
+export interface CategoryRuleRecord {
+  id: string;
+  userId: string;
+  pattern: string;
+  categoryId: string;
+  type: "expense" | "income" | "any";
+  /** Times the user confirmed this rule by saving a matching transaction. */
+  hits: number;
+  source: "learned" | "user";
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SyncOperation {
   operationId: string;
   entity: string;
@@ -157,6 +176,7 @@ export class MoneyOSDB extends Dexie {
   savingsContributions!: Table<SavingsContributionRecord>;
   syncQueue!: Table<SyncOperation, string>;
   recurringRules!: Table<RecurringRuleRecord>;
+  categoryRules!: Table<CategoryRuleRecord>;
 
   constructor() {
     super(DB_NAME);
@@ -175,6 +195,9 @@ export class MoneyOSDB extends Dexie {
     });
     this.version(3).stores({
       recurringRules: "id, userId, [userId+startDate]",
+    });
+    this.version(4).stores({
+      categoryRules: "id, userId, [userId+pattern], [userId+categoryId]",
     });
   }
 }

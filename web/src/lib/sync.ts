@@ -29,7 +29,8 @@ export type SyncEntityType =
   | "budget"
   | "savingsGoal"
   | "savingsContribution"
-  | "recurringRule";
+  | "recurringRule"
+  | "categoryRule";
 
 export type SyncOperationType = "CREATE" | "UPDATE" | "DELETE";
 

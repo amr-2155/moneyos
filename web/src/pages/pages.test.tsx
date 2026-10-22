@@ -183,6 +183,14 @@ vi.mock("../lib/api", () => {
       reverse: vi.fn(),
     },
     dashboard: { get: vi.fn(async () => mockDashboard) },
+    categoryRules: {
+      list: vi.fn(async () => []),
+      create: vi.fn(),
+      setActive: vi.fn(),
+      remove: vi.fn(),
+      restore: vi.fn(),
+      learn: vi.fn(),
+    },
     budgets: { list: vi.fn(async () => [mockBudget]), create: vi.fn(), update: vi.fn(), archive: vi.fn(), restore: vi.fn() },
     savingsGoals: {
       list: vi.fn(async () => [mockGoal]),
@@ -347,6 +355,34 @@ describe("pages", () => {
     expect(screen.getByRole("button", { name: "Add category" })).toBeInTheDocument();
   });
 
+  it("picks the category from a learned rule while the note is typed", async () => {
+    vi.mocked(api.categoryRules.list).mockResolvedValueOnce([
+      {
+        id: "r1",
+        pattern: "كارفور",
+        categoryId: "food",
+        categoryName: "Food & Dining",
+        type: "expense",
+        hits: 3,
+        source: "learned",
+        isActive: true,
+        createdAt: "",
+      },
+    ]);
+
+    renderPage(<AddPage />);
+    await screen.findByRole("heading", { name: "Add a transaction" });
+    fireEvent.click(screen.getByRole("button", { name: "Add a note" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Note (optional)" }), {
+      target: { value: "كارفور المعادي" },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Food & Dining/ })).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Picked from “كارفور”")).toBeInTheDocument();
+  });
+
   it("saves a transaction with the chosen category", async () => {
     renderPage(<AddPage />);
     await screen.findByRole("heading", { name: "Add a transaction" });
@@ -469,7 +505,8 @@ describe("pages", () => {
   it("renders the categories page grouped by type", async () => {
     renderPage(<CategoriesPage />);
     expect(await screen.findByRole("heading", { name: "Categories" })).toBeInTheDocument();
-    expect(screen.getByText("Food & Dining")).toBeInTheDocument();
+    // The name also appears in the rules form's category picker, so scope to the row.
+    expect(screen.getByText("Food & Dining", { selector: ".category-name" })).toBeInTheDocument();
     expect(screen.getByText("Income")).toBeInTheDocument();
     expect(screen.getByText("Expense")).toBeInTheDocument();
   });

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, type CategoryView } from "../lib/api";
+import { api, type CategoryRuleView, type CategoryView } from "../lib/api";
 import { useI18n } from "../i18n";
-import { Badge, Button, ConfirmDialog, EmptyState, Field, Input, Modal, PageHeader, Select, SkeletonCard } from "../components/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, Field, IconButton, Input, Modal, PageHeader, Select, SkeletonCard } from "../components/ui";
+import { Icon } from "../components/Icon";
 import { useToast } from "../components/Toast";
 import { useErrorMessage } from "../lib/errors";
 import { localizeCategoryName } from "../lib/categoryNames";
@@ -15,9 +16,16 @@ export function CategoriesPage() {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryView | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<CategoryView | null>(null);  const [usage, setUsage] = useState<{ transactions: number; budgets: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CategoryView | null>(null);
+  const [usage, setUsage] = useState<{ transactions: number; budgets: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+
+  const [rules, setRules] = useState<CategoryRuleView[] | null>(null);
+  const [rulePattern, setRulePattern] = useState("");
+  const [ruleCategoryId, setRuleCategoryId] = useState("");
+  const [ruleError, setRuleError] = useState<string | null>(null);
+  const [savingRule, setSavingRule] = useState(false);
 
   const load = useCallback(() => {
     setError(null);
@@ -28,6 +36,72 @@ export function CategoriesPage() {
   }, [getError]);
 
   useEffect(() => load(), [load]);
+
+  const loadRules = useCallback(() => {
+    void api.categoryRules
+      .list()
+      .then(setRules)
+      .catch(() => setRules([]));
+  }, []);
+
+  useEffect(() => loadRules(), [loadRules]);
+
+  async function onAddRule(event: React.FormEvent) {
+    event.preventDefault();
+    const pattern = rulePattern.trim();
+    if (pattern.length < 3) {
+      setRuleError(t("categories.rules.tooShort"));
+      return;
+    }
+    if (!ruleCategoryId) {
+      setRuleError(t("categories.rules.chooseCategory"));
+      return;
+    }
+
+    setSavingRule(true);
+    try {
+      await api.categoryRules.create({ pattern, categoryId: ruleCategoryId, type: "any" });
+      setRulePattern("");
+      setRuleCategoryId("");
+      setRuleError(null);
+      show("success", t("categories.rules.added"));
+      loadRules();
+    } catch (err) {
+      setRuleError(getError(err, "errors.generic"));
+    } finally {
+      setSavingRule(false);
+    }
+  }
+
+  function onRemoveRule(rule: CategoryRuleView) {
+    api.categoryRules
+      .remove(rule.id)
+      .then((removed) => {
+        show("success", t("categories.rules.removed"), {
+          action: {
+            label: t("common.undo"),
+            onAction: () => {
+              api.categoryRules
+                .restore(removed)
+                .then(() => {
+                  show("success", t("common.restore"));
+                  loadRules();
+                })
+                .catch((err) => show("error", getError(err, "errors.generic")));
+            },
+          },
+        });
+        loadRules();
+      })
+      .catch((err) => show("error", getError(err, "errors.generic")));
+  }
+
+  function onToggleRule(rule: CategoryRuleView) {
+    api.categoryRules
+      .setActive(rule.id, !rule.isActive)
+      .then(loadRules)
+      .catch((err) => show("error", getError(err, "errors.generic")));
+  }
 
   /**
    * Archiving is reversible, so it runs immediately and the toast offers an
@@ -219,6 +293,74 @@ export function CategoriesPage() {
               )}
             </section>
           ) : null}
+
+          <section className="card rules-card">
+            <div className="card-header">
+              <h2>{t("categories.rules.title")}</h2>
+            </div>
+            <p className="sub">{t("categories.rules.hint")}</p>
+
+            <form className="rule-form" onSubmit={(event) => void onAddRule(event)}>
+              <Input
+                value={rulePattern}
+                onChange={(event) => {
+                  setRulePattern(event.target.value);
+                  setRuleError(null);
+                }}
+                placeholder={t("categories.rules.patternPlaceholder")}
+                aria-label={t("categories.rules.pattern")}
+              />
+              <Select
+                value={ruleCategoryId}
+                aria-label={t("categories.rules.category")}
+                onChange={(event) => {
+                  setRuleCategoryId(event.target.value);
+                  setRuleError(null);
+                }}
+              >
+                <option value="">{t("categories.rules.chooseCategory")}</option>
+                {(categories ?? [])
+                  .filter((category) => !category.isArchived)
+                  .map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {localizeCategoryName(category.name, locale)}
+                    </option>
+                  ))}
+              </Select>
+              <Button type="submit" size="sm" variant="secondary" disabled={savingRule}>
+                {t("categories.rules.add")}
+              </Button>
+            </form>
+            {ruleError ? <p className="error-note">{ruleError}</p> : null}
+
+            {rules === null ? null : rules.length === 0 ? (
+              <p className="sub rules-empty">{t("categories.rules.empty")}</p>
+            ) : (
+              <ul className="list rule-list">
+                {rules.map((rule) => (
+                  <li className={`rule-row${rule.isActive ? "" : " is-off"}`} key={rule.id}>
+                    <span className="rule-pattern">{rule.pattern}</span>
+                    <Icon name="chevron-right" size={14} className="rule-arrow" />
+                    <span className="rule-category">{localizeCategoryName(rule.categoryName, locale)}</span>
+                    <span className="rule-hits">{t("categories.rules.uses", { count: String(rule.hits) })}</span>
+                    <IconButton
+                      icon="eye"
+                      label={rule.isActive ? t("categories.rules.pause") : t("categories.rules.resume")}
+                      className="rule-action"
+                      aria-pressed={!rule.isActive}
+                      onClick={() => onToggleRule(rule)}
+                    />
+                    <IconButton
+                      icon="trash"
+                      label={t("common.delete")}
+                      className="rule-action"
+                      onClick={() => onRemoveRule(rule)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
       )}
 
