@@ -101,6 +101,16 @@ export interface SavingsContributionRecord {
   createdAt: string;
 }
 
+export interface StreakRecord {
+  id: string;
+  userId: string;
+  kind: "streak";
+  categoryId: string | null;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /**
  * A scheduled bill or income. The rule itself holds no transactions; due
  * occurrences are materialised into real records so reporting stays truthful.
@@ -175,8 +185,9 @@ export class MoneyOSDB extends Dexie {
   savingsGoals!: Table<SavingsGoalRecord>;
   savingsContributions!: Table<SavingsContributionRecord>;
   syncQueue!: Table<SyncOperation, string>;
-  recurringRules!: Table<RecurringRuleRecord>;
-  categoryRules!: Table<CategoryRuleRecord>;
+   recurringRules!: Table<RecurringRuleRecord>;
+   categoryRules!: Table<CategoryRuleRecord>;
+   streaks!: Table<StreakRecord>;
 
   constructor() {
     super(DB_NAME);
@@ -198,6 +209,9 @@ export class MoneyOSDB extends Dexie {
     });
     this.version(4).stores({
       categoryRules: "id, userId, [userId+pattern], [userId+categoryId]",
+    });
+    this.version(5).stores({
+      streaks: "id, userId, [userId+date]",
     });
   }
 }
