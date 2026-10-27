@@ -14,8 +14,6 @@ const TOOLS: MoreItem[] = [
   { to: "/reports", label: "nav.reports", icon: "trendup" },
   { to: "/budgets", label: "nav.budgets", icon: "target" },
   { to: "/recurring", label: "nav.recurring", icon: "refresh" },
-  { to: "/accounts", label: "nav.accounts", icon: "bank" },
-  { to: "/transfers", label: "nav.transfers", icon: "swap" },
   { to: "/categories", label: "nav.categories", icon: "tag" },
 ];
 

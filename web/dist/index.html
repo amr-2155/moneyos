@@ -10,7 +10,7 @@
 <meta property="og:title" content="MoneyOS — نظام تشغيل أموالك" />
 <meta property="og:description" content="سجّل مصروفك في 7 ثوانٍ. ميزانيات ذكية، أهداف ادخار، صافي الثروة — كل أموالك في مكان واحد." />
 <meta property="og:type" content="website" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700;800&display=swap" />
@@ -278,7 +278,7 @@ section{padding:4.5rem 0}
 .calc-out{background:var(--navy);color:#fff;border-radius:14px;padding:1.2rem;text-align:center}
 /* Gallery */
 .gal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:2rem}
-.mock{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);translate:0 0;animation:mockFloat 6s ease-in-out infinite}
+.mock{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);translate:0 0;animation:mockFloat 6s ease-in-out infinite;user-select:none}
 @keyframes mockFloat{0%,100%{translate:0 0}50%{translate:0 -8px}}
 .mock-bar{display:flex;gap:6px;padding:.7rem .9rem;border-bottom:1px solid var(--border)}
 .mock-bar i{width:10px;height:10px;border-radius:50%;background:#e2e8f0}
@@ -418,7 +418,7 @@ section[id]{scroll-margin-top:5rem}
     </div>
     <div class="nav-cta">
       <button class="theme-btn" id="themeBtn" aria-label="تبديل الوضع الفاتح/الليلي">🌙</button>
-      <a href="#lead" class="btn btn-ghost" style="padding:.55rem 1.1rem">تسجيل الدخول</a>
+      <a href="app.html" class="btn btn-ghost" style="padding:.55rem 1.1rem">تسجيل الدخول</a>
       <a href="#lead" class="btn btn-primary" style="padding:.55rem 1.2rem">ابدأ مجانًا</a>
       <button class="mobile-toggle" id="menuBtn" aria-label="القائمة"><span></span><span></span><span></span></button>
     </div>
@@ -434,8 +434,8 @@ section[id]{scroll-margin-top:5rem}
       <p class="sub reveal">سجّل أي مصروف في أقل من 7 ثوانٍ، وتابع الميزانيات وأهداف الادخار وصافي الثروة من مكان واحد. دقة مالية حقيقية وخصوصية أولًا — على الجوال والكمبيوتر.</p>
       <div class="hero-actions reveal">
         <a href="#lead" class="btn btn-primary" style="padding:.9rem 2rem;font-size:1.02rem">ابدأ مجانًا — بدون بطاقة</a>
-        <a href="#platform" class="btn btn-ghost">شاهد كيف يعمل</a>
-        <a href="/assets/moneyos.apk" download class="btn btn-light" style="padding:.9rem 2rem">تحميل تطبيق أندرويد</a>
+        <a href="#gallery" class="btn btn-ghost">شاهد كيف يعمل</a>
+        <a href="assets/moneyos.apk" download class="btn btn-light" style="padding:.9rem 2rem">تحميل تطبيق أندرويد</a>
       </div>
       <div class="hero-stats reveal">
         <div><div class="hero-stat-num" data-count="7">7 ثوانٍ</div><div class="hero-stat-label">لتسجيل معاملة</div></div>
@@ -562,7 +562,7 @@ section[id]{scroll-margin-top:5rem}
     <h2 class="sec-title reveal">مجاني 100% — لوجه الله 🤍</h2>
     <p class="sec-sub reveal">لا اشتراكات، لا بطاقات، لا نسخة مدفوعة. كل المميزات لكل الناس — للأبد.</p>
     <div class="price-grid" style="grid-template-columns:minmax(0,26rem);justify-content:center">
-      <div class="card price featured reveal"><span class="tag" style="background:var(--primary);color:#fff;border:none">مجاني للأبد 🤍</span><h3 style="margin-top:.6rem">كل المميزات</h3><div class="amount">0 ج.م</div><p>لوجه الله — بدون مقابل وبدون حدود.</p><ul class="checks"><li>حسابات ومعاملات غير محدودة</li><li>ميزانيات شهرية + أهداف ادخار</li><li>لوحة تحكم وتقارير وتحليلات كاملة</li><li>تصدير CSV لبياناتك</li><li>عربي وإنجليزي · فاتح وداكن · جوال وكمبيوتر</li></ul><br /><a href="#lead" class="btn btn-primary" style="width:100%">أنشئ حسابك المجاني</a><a href="/assets/moneyos.apk" download class="btn btn-outline" style="width:100%;margin-top:.65rem">تحميل تطبيق أندرويد 📲</a></div>
+      <div class="card price featured reveal"><span class="tag" style="background:var(--primary);color:#fff;border:none">مجاني للأبد 🤍</span><h3 style="margin-top:.6rem">كل المميزات</h3><div class="amount">0 ج.م</div><p>لوجه الله — بدون مقابل وبدون حدود.</p><ul class="checks"><li>حسابات ومعاملات غير محدودة</li><li>ميزانيات شهرية + أهداف ادخار</li><li>لوحة تحكم وتقارير وتحليلات كاملة</li><li>تصدير CSV لبياناتك</li><li>عربي وإنجليزي · فاتح وداكن · جوال وكمبيوتر</li></ul><br /><a href="#lead" class="btn btn-primary" style="width:100%">أنشئ حسابك المجاني</a><a href="assets/moneyos.apk" download class="btn btn-outline" style="width:100%;margin-top:.65rem">تحميل تطبيق أندرويد 📲</a></div>
     </div>
     <div class="calc reveal">
       <div>
@@ -585,7 +585,7 @@ section[id]{scroll-margin-top:5rem}
     <span class="eyebrow reveal">جولة في التطبيق</span>
     <h2 class="sec-title reveal">شاشات مصممة للسرعة والوضوح</h2>
     <div class="gal-grid">
-      <div class="mock reveal"><div class="mock-bar"><i></i><i></i><i></i></div><div class="mock-body"><b>🏠 الرئيسية</b><p style="color:var(--muted);font-size:.85rem">المتبقي، الدخل والمصروف، خطتك، وآخر المعاملات — كل شيء في شاشة واحدة.</p><div class="mrow" style="margin-top:.8rem"><span class="mdot" style="background:#2563eb">+</span><span style="font-size:.8rem">إضافة دخل / مصروف</span></div></div></div>
+      <div class="mock reveal"><div class="mock-bar"><i></i><i></i><i></i></div><div class="mock-body"><b>🏠 الرئيسية</b><p style="color:var(--muted);font-size:.85rem">المتبقي، الدخل والمصروف، خطتك، وآخر المعاملات — كل شيء في شاشة واحدة.</p><div class="mrow" style="margin-top:.8rem;background:#2563eb;border-color:#1d4ed8;color:#fff"><span class="mdot" style="background:rgba(255,255,255,.22)">+</span><span style="font-size:.8rem">إضافة دخل / مصروف</span></div></div></div>
       <div class="mock reveal"><div class="mock-bar"><i></i><i></i><i></i></div><div class="mock-body"><b>📊 التقارير</b><p style="color:var(--muted);font-size:.85rem">اتجاه 6 أشهر + تفصيل التصنيفات بالنسب والمبالغ.</p><div class="bar-row"><b style="height:50%"></b><b class="e" style="height:35%"></b><b style="height:70%"></b><b class="e" style="height:45%"></b><b style="height:85%"></b><b class="e" style="height:40%"></b></div></div></div>
       <div class="mock reveal"><div class="mock-bar"><i></i><i></i><i></i></div><div class="mock-body"><b>🎯 الأهداف</b><p style="color:var(--muted);font-size:.85rem">تقدم كل هدف والمتبقي والموعد المتوقع — بتحديث لحظي.</p><div style="margin-top:.8rem;font-size:.85rem">عمرة — 68%</div><div class="progress"><i style="width:68%"></i></div><div style="margin-top:.6rem;font-size:.85rem">طوارئ — 35%</div><div class="progress"><i style="width:35%"></i></div></div></div>
     </div>
@@ -647,41 +647,63 @@ section[id]{scroll-margin-top:5rem}
         form.addEventListener("submit", async function(e){
           e.preventDefault();
           hideError();
-          var email = emailInput.value.trim();
+          var email = emailInput.value.trim().toLowerCase();
           var password = passInput.value;
           var name = nameInput.value.trim();
           if (!email || !password) { showError("اكتب البريد الإلكتروني وكلمة المرور."); return; }
           if (mode === "signup" && !name) { showError("اكتب اسمك عشان نرحب بيك صح."); return; }
           if (mode === "signup" && password.length < 8) { showError("كلمة المرور لازم 8 أحرف على الأقل."); return; }
+
+          var original = submitBtn.textContent;
           submitBtn.disabled = true;
-          submitBtn.textContent = "ثواني... ⏳";
+          submitBtn.textContent = mode === "signup" ? "جارٍ إنشاء الحساب…" : "جارٍ تسجيل الدخول…";
+
           try {
-            var body = mode === "signup" ? { name: name, email: email, password: password } : { email: email, password: password };
-            var res = await fetch("/api/auth/" + mode, {
+            var res = await fetch("/api/auth/" + (mode === "signup" ? "signup" : "login"), {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body)
+              body: JSON.stringify(mode === "signup"
+                ? { name: name, email: email, password: password }
+                : { email: email, password: password })
             });
-            var data = await res.json().catch(function(){ return {}; });
-            if (!res.ok) {
-              var msg = (data && data.error && data.error.message) || "حصل خطأ — حاول تاني.";
-              if (res.status === 409) msg = "البريد ده مسجل بالفعل — سجّل الدخول بدل التسجيل.";
-              if (res.status === 401) msg = "بيانات الدخول غير صحيحة — اتأكد وحاول تاني.";
-              if (res.status === 429) msg = "محاولات كتير — استنى دقيقة وحاول تاني.";
-              showError(msg);
-              submitBtn.disabled = false;
-              submitBtn.textContent = mode === "signup" ? "أنشئ حسابك وادخل التطبيق 🚀" : "ادخل التطبيق 🚀";
+
+            if (res.ok) {
+              var data = await res.json();
+              if (data && data.user && data.tokens) {
+                try {
+                  localStorage.setItem("moneyos.accessToken", data.tokens.accessToken);
+                  localStorage.setItem("moneyos.refreshToken", data.tokens.refreshToken);
+                  localStorage.setItem("moneyos.session", JSON.stringify({
+                    id: data.user.id,
+                    email: data.user.email,
+                    name: data.user.name,
+                    defaultCurrency: data.user.defaultCurrency,
+                    locale: data.user.locale,
+                    createdAt: data.user.createdAt,
+                    offline: false
+                  }));
+                } catch (storageError) { /* private mode — the app will ask again */ }
+              }
+              window.location.href = "app.html";
               return;
             }
-            if (data && data.tokens) {
-              localStorage.setItem("moneyos.accessToken", data.tokens.accessToken);
-              localStorage.setItem("moneyos.refreshToken", data.tokens.refreshToken);
+
+            if (res.status === 409) {
+              showError("يوجد حساب بهذا البريد الإلكتروني بالفعل — جرّب «سجّل الدخول» بالأسفل.");
+            } else if (res.status === 401 || res.status === 400) {
+              showError("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
+            } else if (res.status === 429) {
+              showError("محاولات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.");
+            } else if (res.status === 404) {
+              showError("هذه نسخة عرض ثابتة بلا خادم — نزّل تطبيق أندرويد المجاني من الأعلى، أو شغّل MoneyOS على جهازك ثم افتح /app.");
+            } else {
+              showError("تعذّر إتمام العملية. تحقق من البيانات وحاول مرة أخرى.");
             }
-            window.location.href = "/app";
-          } catch (err) {
-            showError("مش قادر أوصل للسيرفر — اتأكد من الاتصال وحاول تاني.");
+          } catch (networkError) {
+            showError("لا يمكن الوصول إلى الخادم الآن. نزّل تطبيق أندرويد المجاني من الأعلى، أو تحقق من اتصالك وحاول مرة أخرى.");
+          } finally {
             submitBtn.disabled = false;
-            submitBtn.textContent = mode === "signup" ? "أنشئ حسابك وادخل التطبيق 🚀" : "ادخل التطبيق 🚀";
+            submitBtn.textContent = original;
           }
         });
       })();
@@ -760,6 +782,7 @@ section[id]{scroll-margin-top:5rem}
       <p style="color:#dbeafe;margin:.8rem auto 1.6rem;max-width:32rem;position:relative;z-index:1">انضم لآلاف ينظمون رواتبهم وادخارهم بـ MoneyOS. بدون بطاقة — وبياناتك ملكك وتحذف بضغطة.</p>
       <div style="display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
         <a href="#lead" class="btn btn-light" style="padding:.9rem 2.2rem">افتح حسابك المجاني</a>
+        <a href="app.html" class="btn btn-ghost" style="padding:.9rem 2rem;color:#fff;border-color:rgba(255,255,255,.35)">تسجيل الدخول</a>
       </div>
     </div>
     <div class="contact-grid" id="contact">

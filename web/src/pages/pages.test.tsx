@@ -467,15 +467,14 @@ describe("pages", () => {
     expect(screen.getByRole("button", { name: /Export backup/ })).toBeInTheDocument();
   });
 
-  it("renders the more page with every secondary destination reachable", async () => {
+  it("renders the more page with the simplified tools list", async () => {
     renderPage(<MorePage />);
     expect(await screen.findByRole("heading", { name: "More" })).toBeInTheDocument();
     expect(screen.getByText("Transactions")).toBeInTheDocument();
     expect(screen.getByText("Budgets")).toBeInTheDocument();
     expect(screen.getByText("Categories")).toBeInTheDocument();
-    // Accounts and Transfers had routes but no link anywhere: nothing could reach them.
-    expect(screen.getByRole("link", { name: /Accounts/ })).toHaveAttribute("href", "/accounts");
-    expect(screen.getByRole("link", { name: /Transfers/ })).toHaveAttribute("href", "/transfers");
+    expect(screen.queryByText("Accounts")).not.toBeInTheDocument();
+    expect(screen.queryByText("Transfers")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Reports/ })).toHaveAttribute("href", "/reports");
     expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
   });
